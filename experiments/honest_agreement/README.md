@@ -17,6 +17,10 @@ The intended machine class is a consumer CPU with an integrated GPU. A resolved 
 
 ## Candidate sources, still unresolved
 
+The example remains reusable. The approved run's resolved sources, digests,
+licenses, hardware, and frozen calibration-plan hashes are recorded in
+[MANIFEST_2026-10-08.md](MANIFEST_2026-10-08.md).
+
 These are candidate official project or publisher locations. The placeholders are part of the URL on purpose; no tag, asset name, revision, digest, or license has been verified offline.
 
 | Artifact | Candidate URL | Required resolution after approval |
