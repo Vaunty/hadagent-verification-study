@@ -89,7 +89,7 @@ def prepared(tmp_path, monkeypatch):
     evalset.write_text("\n".join(json.dumps({"prompt": f"synthetic question {i}", "answer": a})
                                   for i, a in enumerate(("A", "B"))) + "\n", encoding="utf-8")
     plan = {
-        "schema_version": 1, "repeats": 3, "expected_items": 2,
+        "schema_version": 2, "repeats": 3, "expected_items": 2,
         "mode": "reexecution", "preregistered_reference_correct": 1,
         "reference_run_id": "reference/repeat-0", "context_size": 512, "seed": 0,
         "hardware": {"scope": "consumer CPU/iGPU", **{k: "SIMULATED" for k in ("cpu", "gpu", "driver", "ram", "os")}},
@@ -179,6 +179,48 @@ def test_failed_run_recorded_and_server_stopped(prepared):
     report = analyze.analyze_rows(rows, prepared[0])
     assert report["exact_score_equality_rejection_component"] == analyze.fraction(0, 4)
     assert len(report["failed_runs"]) == 1 and report["complete"] is False
+
+
+@pytest.mark.parametrize("letter,text", [("A", "An explanation"), ("B", "Because it fits"),
+                                         ("C", "Cannot decide"), ("D", "Depends on context")])
+def test_prefix_matches_are_reported_separately_from_bare_letters(prepared, letter, text):
+    plan, world, output = prepared
+    from pathlib import Path
+    path = Path(plan["evalset"]["path"])
+    entries = [json.loads(line) for line in path.read_text().splitlines()]
+    entries[0]["answer"] = letter
+    path.write_text("\n".join(json.dumps(entry) for entry in entries) + "\n", encoding="utf-8")
+    plan["evalset"]["sha256"] = run.digest(path.read_bytes())
+    world.cases[0]["outputs"] = [text, "X"]
+    rows = execute(prepared)
+    report = analyze.analyze_rows(rows, plan)
+    assert rows[0]["result"]["correct"] == 1  # Real HadAgent prefix rule is unchanged.
+    diagnostic = report["hadagent_rule_diagnostics"][0]
+    assert diagnostic["matched_non_bare_letter"] == 1
+    assert diagnostic["matched_non_bare_letter_fraction"] == analyze.fraction(1, 1)
+    assert diagnostic["matched_non_bare_letter_item_indices"] == [0]
+    assert "not MMLU accuracy" in report["score_definition"]
+
+
+def test_failed_vulkan_cells_report_21_of_24_with_20_comparisons(prepared):
+    plan, world, _ = prepared
+    original = plan["configurations"][0]
+    plan["configurations"] = [{**deepcopy(original), "id": name, "threads": i + 1}
+                              for i, name in enumerate(["reference"] + [f"cpu-{i}" for i in range(6)] + ["vulkan"])]
+    plan["configurations"][-1].update(backend="vulkan", gpu_layers=99)
+    world.cases = [{"outputs": ["A", "X"]} for _ in range(24)]
+    for case in world.cases[21:]:
+        case["exit_early"] = True
+    rows = execute(prepared)
+    report = analyze.analyze_rows(rows, plan)
+    assert report["run_coverage"] == {"planned": 24, "attempted": 24, "successful": 21,
+                                      "failed": 3, "interrupted": 0, "missing": 0,
+                                      "successful_fraction": analyze.fraction(21, 24)}
+    assert report["backend_run_coverage"]["vulkan"]["failed"] == 3
+    assert report["backend_run_coverage"]["vulkan"]["missing"] == 0
+    assert report["comparison_population"]["successful_nonreference_runs"] == 20
+    assert report["exact_score_equality_rejection_component"] == analyze.fraction(0, 20)
+    assert len(report["failed_runs"]) == 3 and report["missing_runs"] == []
 
 
 def test_interrupt_stops_owned_server_and_reports_missing_runs(prepared):

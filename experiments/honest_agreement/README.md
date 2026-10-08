@@ -1,8 +1,8 @@
 # P-005 honest-agreement experiment
 
-**Status: offline preparation only.** Creating this directory did not download a model, dataset, or binary; contact a network service; start `llama-server`; or run a real inference. The candidate URLs below have not been opened or verified. Every value marked `UNRESOLVED` must stay unresolved until the project records the required P-005 approvals, then be checked against the publisher's current source before use.
+**Status: approved artifact verification in progress.** The original harness was prepared and independently tested offline. Matthew's P-005 approval is now confirmed out of band in Claude's 2026-10-08 18:05 entry, and the user has instructed Astra to start the real runs. The candidate table and example JSON below remain templates; each unresolved value must be replaced with publisher-verified evidence in a separate frozen execution plan before use. Artifact retrieval is not a model-agreement result.
 
-This experiment asks whether nominally deterministic llama.cpp evaluations produce the same completion bytes and the same exact-match score under a fixed model, eval set, decode configuration, and selected runtime settings. It has two deliberately separate modes:
+This experiment asks whether nominally deterministic llama.cpp evaluations produce the same completion bytes and the same HadAgent-rule score under a fixed model, eval set, decode configuration, and selected runtime settings. It has two deliberately separate modes:
 
 - `reexecution` represents the paper-described design in which a validator independently re-executes an evaluation. Each configuration and repeat gets a fresh local `llama-server` process. Every configuration must use `parallel: 1` and `load_workers: 0`.
 - `same_endpoint_load` isolates behavior relevant to the current prototype, whose verifier re-queries the endpoint supplied in the payload. An idle pass and a pass under concurrent load use the same server process. This mode does not model independent validator re-execution.
@@ -11,7 +11,7 @@ Do not combine the modes in one plan, JSONL file, or report. Neither mode estima
 
 ## Approval and machine boundary
 
-Planning, stub tests, and static review are GREEN. Artifact retrieval, reference calibration with the real model, and the measured matrix require recorded P-005 approval and its conditions to be met. An `--approval-note` records an approval that already exists; it does not grant one. Matthew's approval is now recorded in the local outbox; this preparation task still follows the user's explicit no-download instruction.
+Planning, stub tests, and static review are GREEN. Artifact retrieval, reference calibration with the real model, and the measured matrix require recorded P-005 approval and its conditions to be met. An `--approval-note` records an approval that already exists; it does not grant one. Claude's out-of-band confirmation satisfies reviewer's approval hold; artifact verification, licenses, and the predeclared calibration gate still apply.
 
 The intended machine class is a consumer CPU with an integrated GPU. A resolved plan must record `cpu`, `gpu`, `driver`, `ram`, and `os` exactly as observed. Do not install a driver or Vulkan SDK, request administrator rights, change firewall rules, or accept a firewall prompt for this experiment. Bind only to `127.0.0.1`. If the approved llama.cpp build cannot use Vulkan as shipped, record the Vulkan cells as failed or missing and report that fact; do not repair the environment during the run.
 
@@ -55,7 +55,7 @@ Respond with exactly one uppercase letter: A, B, C, or D.
 Answer:
 ```
 
-The HadAgent scorer normalizes whitespace and case, then treats a completion as correct when it starts with the normalized answer. The runner also hashes the full raw and normalized completion text, so score equality and byte-for-byte output agreement remain separate measurements.
+The HadAgent scorer normalizes whitespace and case, then counts a completion as a match when it starts with the normalized answer. Report this as the **HadAgent-rule score**, including the reference gate; it is not MMLU accuracy. For example, an answer beginning "Because" matches a B label. The retained `correct` JSON field means prefix-match count. Schema 2 also records whether each normalized completion is just one letter A-D; the analysis reports matched non-bare-letter counts, fractions, and item indices per run, including calibration. The runner hashes the full raw and normalized completion text, so score equality and byte-for-byte output agreement remain separate measurements.
 
 Record the pinned source, license result, selection rule, prompt template, and final JSONL SHA-256 in the resolved plan. A source or license string that still says `UNRESOLVED` is not evidence of verification.
 
@@ -164,8 +164,10 @@ The analyzer requires this `--config` option and rejects rows whose plan hash, p
 
 The predeclared first row is the reference. If it fails or is missing, analysis stops; it is never replaced. Comparisons exclude that reference from their denominator. Failed and missing runs are reported separately and do not silently become agreements or disagreements. A complete report needs every planned row.
 
-Raw-output equality compares complete completion hashes. Score equality compares the integer exact-match total. Different outputs may receive the same score, and one score mismatch may arise from one or many changed item outputs. Within-configuration repeat stability should be read separately from comparisons to the reference.
+`run_coverage` and `backend_run_coverage` show planned, attempted, successful, failed, interrupted, and missing rows. A Vulkan startup failure is attempted and failed; an unattempted run after a deadline is missing. For example (SIMULATED), if all three Vulkan runs fail in the 24-run matrix, successful coverage is 21/24. The score-agreement denominator then contains 20 successful nonreference runs, with the three failures and one reference explicitly excluded; it is never reported as agreement over the full planned matrix.
+
+Raw-output equality compares complete completion hashes. Score equality compares the integer HadAgent-rule prefix-match total. Different outputs may receive the same score, and one score mismatch may arise from one or many changed item outputs. Within-configuration repeat stability should be read separately from comparisons to the reference.
 
 Reject mixed model hashes, eval-set hashes, prompt sequences, decode settings, hardware metadata, code provenance, or conflicting binary identities. Report the tested settings and observed counts only. Do not generalize from this small, fixed matrix to other models, benchmarks, hardware, builds, or production false-positive rates.
 
-Everything in this directory remains planned or stub-tested preparation. The matrix sizes, thresholds, timeouts, and configuration values are predeclared design choices, not measured model results. Required OpenCode and reviewer confirmation must be recorded before making any CRA, paper, or empirical claim from this work.
+The matrix sizes, thresholds, timeouts, and configuration values are predeclared design choices, not measured model results. OpenCode confirmed the original offline harness; new reporting changes and any real results receive separate verification. Required OpenCode and reviewer confirmation must be recorded before making any CRA or paper claim from this work.

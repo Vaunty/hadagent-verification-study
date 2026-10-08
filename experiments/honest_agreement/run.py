@@ -28,7 +28,8 @@ from podl_chain import pdl
 
 
 SCALE = 10_000
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+SCORE_DEFINITION = "HadAgent-rule score: case/whitespace-normalized prefix matches; not MMLU accuracy"
 ROOT = Path(__file__).resolve().parents[2]
 DIMENSIONS = ("id", "version", "version_output_sha256", "backend", "threads", "batch", "ubatch", "gpu_layers", "parallel", "load_workers")
 SOURCE_FILES = ("experiments/honest_agreement/run.py", "experiments/honest_agreement/analyze.py",
@@ -155,7 +156,7 @@ def reference_stop(plan, row):
         return "reference failed"
     result = row["result"]
     if not 15 * result["total"] <= 100 * result["correct"] <= 85 * result["total"]:
-        return "reference outside preregistered 15..85 percent range"
+        return "reference HadAgent-rule score outside preregistered 15..85 percent range"
     if row.get("calibration_only"):
         return "calibration only; preregister this reference score before the matrix"
     if result["correct"] != plan["preregistered_reference_correct"]:
@@ -364,6 +365,7 @@ def make_row(plan, config, repeat, phase, artifacts, label, approval_note, commi
     cfg = pdl.DecodeConfig()
     return {
         "schema_version": SCHEMA_VERSION, "evidence_label": label, "mode": plan["mode"],
+        "score_definition": SCORE_DEFINITION,
         "run_id": run_id(config, repeat, phase), "reference_run_id": plan["reference_run_id"],
         "planned_run_ids": planned_runs(plan), "plan_sha256": digest(canonical(plan).encode()),
         "code_commit": commit, "code_sources_sha256": sources, "approval_note": approval_note,
@@ -402,6 +404,7 @@ def score_phase(plan, config, row, pairs, endpoint, process, transport):
         outputs.append({"item_index": index, "prompt_sha256": digest(prompt.encode()),
                         "raw_output_sha256": digest(text.encode()),
                         "normalized_output_sha256": digest(normalized.encode()),
+                        "bare_answer_letter": normalized in ("a", "b", "c", "d"),
                         "matched": normalized.startswith(pdl.normalize_answer(pairs[index][1]))})
         return text
 

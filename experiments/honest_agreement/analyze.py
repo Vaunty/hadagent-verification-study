@@ -40,10 +40,36 @@ def validate_result(result):
     for output in outputs:
         if type(output["matched"]) is not bool:
             raise ValueError("invalid grading label")
+        if type(output.get("bare_answer_letter")) is not bool:
+            raise ValueError("missing/invalid bare-answer-letter diagnostic")
         for key in ("prompt_sha256", "raw_output_sha256", "normalized_output_sha256"):
             require_hash(output[key])
+        if output["bare_answer_letter"] != (output["normalized_output_sha256"] in {
+            run.digest(letter.encode()) for letter in "abcd"
+        }):
+            raise ValueError("bare-answer-letter diagnostic disagrees with normalized output hash")
     if sum(o["matched"] for o in outputs) != correct:
         raise ValueError("captured grading and correct count disagree")
+
+
+def rule_diagnostics(row):
+    result = row["result"]
+    if result is None:
+        return {"run_id": row["run_id"], "status": row["status"], "matched_non_bare_letter": None}
+    matched = [o for o in result["outputs"] if o["matched"]]
+    count = sum(not o["bare_answer_letter"] for o in matched)
+    return {"run_id": row["run_id"], "status": row["status"], "matched_items": len(matched),
+            "matched_non_bare_letter": count, "matched_non_bare_letter_fraction": fraction(count, len(matched)),
+            "matched_non_bare_letter_item_indices": [o["item_index"] for o in matched if not o["bare_answer_letter"]]}
+
+
+def coverage(planned_ids, rows):
+    selected = [r for r in rows if r["run_id"] in planned_ids]
+    good = sum(r["status"] == "ok" for r in selected)
+    return {"planned": len(planned_ids), "attempted": len(selected), "successful": good,
+            "failed": sum(r["status"] == "failed" for r in selected),
+            "interrupted": sum(r["status"] == "interrupted" for r in selected),
+            "missing": len(planned_ids) - len(selected), "successful_fraction": fraction(good, len(planned_ids))}
 
 
 def analyze_rows(rows, plan):
@@ -58,11 +84,12 @@ def analyze_rows(rows, plan):
         raise ValueError("unknown evidence label")
     # A backend/build is an intended dimension; model/eval/decode/host are not.
     shared_keys = ("schema_version", "evidence_label", "planned_run_ids", "plan_sha256",
-                   "code_commit", "code_sources_sha256", "approval_note", "mode", "calibration_only",
+                   "code_commit", "code_sources_sha256", "approval_note", "mode", "calibration_only", "score_definition",
                    "reference_run_id", "hardware", "platform",
                    "context_size", "seed", "decode_config", "evalset_provenance")
     cfg = run.pdl.DecodeConfig()
     expected = {"plan_sha256": run.digest(canonical(plan).encode()), "planned_run_ids": planned,
+                "score_definition": run.SCORE_DEFINITION,
                 "reference_run_id": plan["reference_run_id"], "mode": plan["mode"],
                 "hardware": plan["hardware"], "context_size": plan["context_size"], "seed": plan["seed"],
                 "decode_config": {**asdict(cfg), "sha256": cfg.hash().hex()},
@@ -78,7 +105,7 @@ def analyze_rows(rows, plan):
     configurations = {}
     build_hashes = {}
     for row in rows:
-        if row["schema_version"] != 1 or any(
+        if row["schema_version"] != run.SCHEMA_VERSION or any(
             canonical(row[k]) != canonical(first[k]) for k in shared_keys
         ):
             raise ValueError("mixed experiments, evidence labels, or invariants")
@@ -137,12 +164,20 @@ def analyze_rows(rows, plan):
     if len(references) != 1 or references[0]["status"] != "ok":
         raise ValueError("predeclared reference is missing or failed; no replacement is allowed")
     reference = references[0]
+    diagnostics = [rule_diagnostics(row) for row in rows]
+    backend_coverage = {
+        backend: coverage([name for name in planned if configs_by_id[name.split("/")[0]]["backend"] == backend], rows)
+        for backend in sorted({c["backend"] for c in plan["configurations"]})
+    }
     if run.reference_stop(plan, reference):
         return {"evidence_label": first["evidence_label"], "complete": False,
+                "schema_version": run.SCHEMA_VERSION, "score_definition": run.SCORE_DEFINITION,
+                "hadagent_rule_diagnostics": diagnostics, "run_coverage": coverage(planned, rows),
+                "backend_run_coverage": backend_coverage,
                 "stop_reason": run.reference_stop(plan, reference), "reference_result": reference["result"],
                 "recorded_runs": len(rows), "planned_runs": len(planned),
                 "missing_runs": [name for name in planned if name not in seen],
-                "agreement_statistics": None}
+                "agreement_statistics": None, "comparison_population": None}
     ref_outputs = reference["result"]["outputs"]
     successful = [r for r in rows if r["status"] == "ok"]
     for row in successful:
@@ -153,6 +188,9 @@ def analyze_rows(rows, plan):
             if (output["raw_output_sha256"] == ref["raw_output_sha256"]
                     and output["normalized_output_sha256"] != ref["normalized_output_sha256"]):
                 raise ValueError("identical outputs have inconsistent normalization")
+            if (output["normalized_output_sha256"] == ref["normalized_output_sha256"]
+                    and output["bare_answer_letter"] != ref["bare_answer_letter"]):
+                raise ValueError("identical outputs have inconsistent letter diagnostics")
             if output["normalized_output_sha256"] == ref["normalized_output_sha256"] and output["matched"] != ref["matched"]:
                 raise ValueError("identical outputs have inconsistent grading")
 
@@ -227,12 +265,18 @@ def analyze_rows(rows, plan):
     failures = [{"run_id": r["run_id"], "status": r["status"], "error": r["error"]}
                 for r in rows if r["status"] != "ok"]
     return {
-        "schema_version": 1, "evidence_label": first["evidence_label"],
+        "schema_version": run.SCHEMA_VERSION, "evidence_label": first["evidence_label"],
+        "score_definition": run.SCORE_DEFINITION, "hadagent_rule_diagnostics": diagnostics,
         "scope": "consumer CPU/iGPU; tested settings only",
         "design": "paper-described validator reexecution" if plan["mode"] == "reexecution" else "prototype miner-endpoint re-query under concurrent load",
         "reference_run_id": reference["run_id"], "plan_sha256": first["plan_sha256"],
         "planned_runs": len(planned), "recorded_runs": len(rows),
         "successful_runs": len(successful), "failed_runs": failures, "missing_runs": missing,
+        "run_coverage": coverage(planned, rows), "backend_run_coverage": backend_coverage,
+        "comparison_population": {"planned_nonreference_runs": len(planned) - 1,
+                                  "successful_nonreference_runs": len(comparisons),
+                                  "excluded_failed_or_interrupted_runs": len(failures),
+                                  "unattempted_runs": len(missing), "reference_excluded": True},
         "complete": not missing and not failures,
         "exact_score_equality_rejection_component": fraction(score_mismatches, len(comparisons)),
         "per_run_reference_comparisons": [compare(r, reference) for r in comparisons],
@@ -243,6 +287,7 @@ def analyze_rows(rows, plan):
         "per_config_prompt_agreement_to_reference": per_config_prompts,
         "per_config_scores": per_config_scores, "within_config_repeat_stability": within_config,
         "limitations": [
+            "The score and reference gate use HadAgent's prefix rule, not MMLU accuracy. Bare-letter diagnostics normalize case/whitespace first.",
             "Reference excluded from comparison denominators; failures/missing runs are separate.",
             "Score mismatches describe the equality component, not full-verifier/chain rejection.",
             "Output disagreement alone does not imply score rejection or benchmark inaccuracy.",
