@@ -90,3 +90,41 @@ plan assumes, so early rows overlap with catching up.
 - Move the validation fuzzer to Hypothesis and pin it against the buggy commit.
 
 Progress: (to be filled in at the next update)
+
+## 2026-10-08: score-scale unit reproduction (internal only)
+
+The earlier gap in this log remains a gap; no measured experiment was recorded
+here during that period. The documented hand reproduction is now a repeatable
+test in `tests/test_podl_score_scale.py` on `astra/real-verifier`. It calls the
+real `podl_chain.pdl.verify_podl_llm_eval` with stubbed eval-set loading, parsing,
+and scoring. HadAgent's source is unchanged, both hash checks execute, and an
+HTTP guard fails the test if it tries to make a request.
+
+SIMULATED inputs: an eval set of 100 synthetic pairs, threshold 8,000, and the
+correct counts, scales, and matching claims below. MEASURED outputs: the real
+verifier's decisions, asserted by the committed test. No model inference,
+record validation, or chain acceptance was exercised.
+
+| Correct / total (SIMULATED) | Scale (SIMULATED) | Claimed score (SIMULATED) | Verifier decision (MEASURED) |
+|---|---|---|---|
+| 85 / 100 | 10,000 | 8,500 | accept |
+| 10 / 100 | 10,000 | 1,000 | reject: below target |
+| 1 / 100 | 1,000,000 | 10,000 | accept: current score-scale bug |
+| 0 / 100 | 1,000,000 | 0 | reject: below target |
+
+MEASURED validation at commit `9753f8a95ee979ed17dae709953a40e74d4f7431`:
+the full suite passed with `41 passed, 1 skipped`; this includes every case
+above. Command from the repository root:
+
+```powershell
+$env:PYTHONPATH='hadagent/src'
+.venv\Scripts\python -m pytest -v 2>&1 | Tee-Object -FilePath 'test_results/astra-score-scale/full-suite-9753f8a.txt'
+```
+
+The output is saved locally at
+`test_results/astra-score-scale/full-suite-9753f8a.txt` (ignored by Git).
+The suite's existing validation-metrics section describes synthetic record
+fixtures; its false-positive figure does not measure GPU nondeterminism or
+honest-model behavior. Independent opencode confirmation and grok's claim
+review are pending. The endpoint test and measured fix await P-002 consensus.
+Nothing has been pushed or shared outside the machine.
