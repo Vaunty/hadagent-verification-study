@@ -15,6 +15,7 @@ import pytest
 
 from podl_chain import pdl
 from experiments.honest_agreement import analyze, run
+from experiments.honest_agreement.prepare_evalset import prepare
 
 
 class FakeProcess:
@@ -487,3 +488,21 @@ def test_deadline_watchdog_kills_stalled_server(prepared, monkeypatch):
     with pytest.raises(TimeoutError, match="deadline"):
         with run.server_deadline(process, 0, 1):
             assert process.killed and not process.active
+
+
+def test_eval_selection_is_sorted_round_robin_and_preserves_quoted_content(tmp_path):
+    source = tmp_path / "test"
+    source.mkdir()
+    (source / "z_test.csv").write_text('z0,a,b,c,d,D\nz1,a,b,c,d,C\n', encoding="utf-8")
+    (source / "a_test.csv").write_text('"a0, question",a,b,c,d,A\na1,a,b,c,d,B\n', encoding="utf-8")
+    output, manifest = tmp_path / "eval.jsonl", tmp_path / "manifest.json"
+    template = "{question}\n{choice_a}|{choice_b}|{choice_c}|{choice_d}\nAnswer: "
+    result = prepare(source, template, output, manifest, count=3)
+    rows = [json.loads(line) for line in output.read_text().splitlines()]
+    assert [r["answer"] for r in rows] == ["A", "D", "B"]
+    assert rows[0]["prompt"] == "a0, question\na|b|c|d\nAnswer: "
+    assert [(r["subject_csv"], r["source_row_index"]) for r in result["selected_rows"]] == [
+        ("a_test.csv", 0), ("z_test.csv", 0), ("a_test.csv", 1)]
+    assert result["evalset_sha256"] == run.digest(output.read_bytes())
+    with pytest.raises(FileExistsError):
+        prepare(source, template, output, manifest, count=3)
