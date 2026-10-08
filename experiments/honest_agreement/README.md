@@ -1,6 +1,6 @@
 # P-005 honest-agreement experiment
 
-**Status: approved artifact verification in progress.** The original harness was prepared and independently tested offline. Matthew's P-005 approval is now confirmed out of band in Claude's 2026-10-08 18:05 entry, and the user has instructed Astra to start the real runs. The candidate table and example JSON below remain templates; each unresolved value must be replaced with publisher-verified evidence in a separate frozen execution plan before use. Artifact retrieval is not a model-agreement result.
+**Status: the first real reference calibration failed at its frozen runtime limit.** At commit `74a87ea`, it completed 50 of 100 prompts before a scoring timeout at 600.031 seconds (MEASURED). The server stopped; the reference was not retried, and neither experiment matrix ran. No HadAgent-rule score or agreement estimate was finalized. See the [research log](../../docs/RESEARCH_LOG.md) and `local/results/calibration.failure-summary.json`. The candidate table and example JSON below remain reusable templates; the dated manifest records the artifacts actually verified and used.
 
 This experiment asks whether nominally deterministic llama.cpp evaluations produce the same completion bytes and the same HadAgent-rule score under a fixed model, eval set, decode configuration, and selected runtime settings. It has two deliberately separate modes:
 
@@ -36,7 +36,7 @@ Do not infer a pin from a moving branch, a release page, or a filename. For each
 
 The example keeps all local artifacts under ignored paths: `tools/` for binaries and `experiments/honest_agreement/local/` for the model, eval set, logs, and results. No downloader is included.
 
-Publisher verification of the release archive is an approval-time manual step. The runner checks the pinned local EXE, model, eval set, and runtime files before and after each session, and refuses an unpinned DLL in the release directory. Runtime paths are relative to the executable's directory. This does not hash Windows system libraries; the hardware/OS record describes that environment. Version output uses Python's universal-newline normalization before stripping and hashing. Rows record both Git HEAD and hashes of the runner, analyzer, scorer, and crypto source, so HEAD alone is not treated as proof of the code used.
+Publisher verification of the release archive is an approval-time manual step. The runner checks the pinned local EXE, model, eval set, and runtime files before each session and after successful scoring, and refuses an unpinned DLL in the release directory. A scoring exception skips that success-path post-check, so the failed calibration received an explicit post-run verification of every pinned artifact and source file; it passed and is saved in `local/results/post-calibration-integrity.json`. Runtime paths are relative to the executable's directory. This does not hash Windows system libraries; the hardware/OS record describes that environment. Version output uses Python's universal-newline normalization before stripping and hashing. Rows record both Git HEAD and hashes of the runner, analyzer, scorer, and crypto source, so HEAD alone is not treated as proof of the code used.
 
 ## Fixed eval-set contract
 

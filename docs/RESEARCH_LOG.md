@@ -298,3 +298,99 @@ The final outbox check found Matthew's recorded P-005 approval dated
 and no-download scope. Reference calibration, downloads, real inference, and CLI/backend compatibility checks have
 not happened. OpenCode's independent rerun and reviewer's wording approval are
 also pending; no empirical model-agreement result is ready for the paper or CRA.
+
+## 2026-10-08: P-005 first real calibration stopped at the frozen limit
+
+Matthew's P-005 approval was confirmed out of band by Claude at 18:05. The
+original offline harness at 62c4ca2 had already been CONFIRMED by OpenCode
+(17:13), and reviewer approved its scoped preparation claim (17:40). Before
+real execution, b3ede3bbca285f6053b0efab8b07a8fec723f102 applied reviewer's
+reporting flags: HadAgent-rule prefix scores rather than MMLU accuracy,
+matched non-bare-letter diagnostics, and explicit failed/missing/backend
+coverage and comparison denominators. These additions await a separate
+OpenCode rerun.
+
+The deterministic CSV builder is in dfbdf2e01058318409c8cde727d4daf81da633f6.
+Its first full-suite run encountered a collection error in the downloaded
+MMLU source's own test_calibration.py (missing pandas), preserved in
+`test_results/astra-p005/full-suite-eval-preparation.txt`. Commit
+c159898da841419920e6c5cb61500ab19f5f4f09 excludes the ignored download
+folders from project-test discovery; no dependency was installed. MEASURED
+at that commit: **104 passed, 1 inherited legacy skip in 4.42s**, exit 0:
+
+```powershell
+$env:PYTHONPATH='hadagent/src'
+.venv\Scripts\python -m pytest -q -rs 2>&1 | Tee-Object -FilePath 'test_results/astra-p005/full-suite-artifact-isolation.txt'
+```
+
+Output SHA-256:
+`E0D7A7D9BE29F425F8C79BC477102C9B0726E77BB8A59D810B8C27DA9718FB2D`.
+The new tests use SIMULATED model-like inputs; the inherited validation-metrics
+summary is not a model-agreement result.
+
+Official artifact URLs, publisher digests where available, licenses, local
+hashes, hardware, and the frozen plan are documented in
+`experiments/honest_agreement/MANIFEST_2026-10-08.md` at
+74a87ea2263b38c7eb4c42fe358477649fad0a31. The selected model is the pinned
+Qwen2.5-1.5B-Instruct Q4_K_M GGUF. Build A is llama.cpp b11514 (CPU/Vulkan),
+and B is b11513 (CPU). Archive and model publisher checks passed before use;
+MMLU has no published cryptographic digest in the checked sources, so its
+saved SHA-256 is explicitly local evidence. Qwen's license is Apache-2.0;
+llama.cpp and MMLU are MIT. The dataset's license is supported by its pinned
+official CAIS card, not inferred solely from its code repository.
+
+The fixed eval set was built without changing the predeclared selection or
+prompt template:
+
+```powershell
+.venv\Scripts\python -m experiments.honest_agreement.prepare_evalset --test-directory experiments/honest_agreement/local/sources/mmlu/official-data/data/test --plan experiments/honest_agreement/plan.example.json --output experiments/honest_agreement/local/evalsets/mmlu-fixed-100.jsonl --manifest experiments/honest_agreement/local/evalsets/mmlu-fixed-100.selection.json
+```
+
+Command output is saved in `test_results/astra-p005/eval-preparation-c159898.txt`.
+Eval JSONL SHA-256:
+`337118581a78bc8b083030e5c5642480f3d4401d69dc486728dddc83f3049a51`.
+The frozen calibration plan's canonical hash is
+`e6efe29d177017e018385a3e9df2c9d2fe0a563028e288dd21a69ec5f643fa21`.
+
+MEASURED real calibration at **74a87ea2263b38c7eb4c42fe358477649fad0a31**:
+
+```powershell
+$env:PYTHONPATH='hadagent/src'
+.venv\Scripts\python -m experiments.honest_agreement.run --config experiments/honest_agreement/local/plan.calibration.json --output experiments/honest_agreement/local/results/calibration.jsonl --execute --calibrate --approval-note 'P-005: matthew.md 16:38; claude.md out-of-band confirmation 2026-10-08 18:05' 2>&1 | Tee-Object -FilePath 'test_results/astra-p005/calibration-74a87ea.txt'
+```
+
+The predeclared one-thread CPU reference **failed** with `TimeoutError` in
+scoring after **50 of 100 completed items**, at **600.031 seconds** for the
+session. The command exited 1; the owned server process was confirmed gone.
+There is no finalized HadAgent-rule score, matched non-bare-letter count, or
+agreement statistic. Partial completions were not recast as a benchmark score.
+The reference was not retried, the timeout was not extended, and neither the
+planned matrix nor the separate idle/load condition was started. Vulkan
+inference was unattempted; it is not being labeled a failed Vulkan cell.
+
+Primary evidence (local, ignored):
+
+- `experiments/honest_agreement/local/results/calibration.jsonl`, SHA-256
+  `cc0c4a3ed32d8a7e04db7a68680c44c6469c527e5732830ba1c8cfed0d869da5`.
+- Its server log under `calibration-logs/`, SHA-256
+  `b3c0f7d826d06d92bf34c6498d80c559caca666b4ccee71f7ea42c5bcf90c99d`.
+- `local/results/calibration.failure-summary.json`, a summary of that failed
+  row with score/agreement fields explicitly null.
+- `local/results/post-calibration-integrity.json`: every pinned model, eval-set,
+  executable, runtime file, and source identity passed an explicit post-failure
+  check. The runner's automatic post-check is on the success path, so this
+  verification was done separately after the failed attempt.
+
+The analyzer was also invoked with the frozen calibration plan and rejected
+this failed reference as designed (exit 1, no replacement). Its error is saved
+in `test_results/astra-p005/calibration-analysis-74a87ea.txt`. A network snapshot
+showed the owned server listening and communicating on loopback only; the
+loaded module snapshot identified the CPU Haswell backend. These are snapshots,
+not continuous network tracing. Both are saved under `local/sources/`.
+
+This outcome establishes that the chosen reference did not finish under the
+frozen session limit on this machine during this attempt. It supplies **no
+honest-node agreement or false-positive estimate**, and makes no comparison to
+the paper's tampering-detection result. A longer run would require a distinct,
+explicitly reviewed plan revision; the failed pilot remains part of the record.
+No `hadagent/src` edit, system change, merge, or push occurred.
