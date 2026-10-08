@@ -60,3 +60,7 @@ copy_legacy.ps1
 
 # Retired code (LLM/VLM phase); kept locally, not part of the PoI repo
 legacy/
+
+# Local P-005 binaries, models, eval sets, logs, and experiment output
+/tools/
+/experiments/honest_agreement/local/

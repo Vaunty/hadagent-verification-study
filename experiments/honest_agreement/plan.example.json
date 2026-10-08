@@ -1,0 +1,203 @@
+{
+  "schema_version": 1,
+  "mode": "reexecution",
+  "repeats": 3,
+  "expected_items": 100,
+  "preregistered_reference_correct": null,
+  "reference_score_gate": {
+    "minimum_percent_inclusive": 15,
+    "maximum_percent_inclusive": 85
+  },
+  "reference_run_id": "cpu-vA-t1-b512-u128/repeat-0",
+  "experiment_timeout_s": 21600,
+  "startup_timeout_s": 120,
+  "request_timeout_s": 120,
+  "run_timeout_s": 600,
+  "shutdown_timeout_s": 15,
+  "context_size": 4096,
+  "seed": 42,
+  "hardware": {
+    "scope": "consumer CPU/iGPU",
+    "cpu": "<UNRESOLVED_CPU_MODEL>",
+    "gpu": "<UNRESOLVED_INTEGRATED_GPU_MODEL>",
+    "driver": "<UNRESOLVED_GPU_DRIVER_VERSION>",
+    "ram": "<UNRESOLVED_INSTALLED_AND_USABLE_RAM>",
+    "os": "<UNRESOLVED_OS_EDITION_VERSION_AND_BUILD>"
+  },
+  "model": {
+    "name": "Qwen2.5-1.5B-Instruct-GGUF",
+    "filename": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "path": "experiments/honest_agreement/local/models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "candidate_url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/<UNRESOLVED_MODEL_REVISION>/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    "revision": "<UNRESOLVED_MODEL_REVISION>",
+    "sha256": "<UNRESOLVED_HF_LFS_SHA256>",
+    "license": "UNRESOLVED: expected Apache-2.0; verify the model card at the pinned revision before download or use"
+  },
+  "evalset": {
+    "name": "MMLU fixed 100-item test subset",
+    "path": "experiments/honest_agreement/local/evalsets/mmlu-fixed-100.jsonl",
+    "sha256": "<UNRESOLVED_FINAL_EVALSET_JSONL_SHA256>",
+    "source": "https://github.com/hendrycks/test/archive/<UNRESOLVED_MMLU_REVISION>.zip",
+    "revision": "<UNRESOLVED_MMLU_REVISION>",
+    "source_archive_sha256": "<UNRESOLVED_MMLU_SOURCE_ARCHIVE_SHA256>",
+    "data_candidate_url": "<UNRESOLVED_MMLU_DATA_ARTIFACT_URL>",
+    "data_artifact_sha256": "<UNRESOLVED_MMLU_DATA_ARTIFACT_SHA256>",
+    "license": "UNRESOLVED: verify the source repository and dataset license at the pinned revision before use",
+    "selection": "MMLU test split only; sort subject CSV relative paths lexicographically, then take row 0 from every subject in order, row 1 from every subject in order, and so on while skipping exhausted subjects; stop at exactly 100 rows; preserve that order; no shuffle, filtering, replacement, or post-calibration changes",
+    "prompt_template": "Question: {question}\nA. {choice_a}\nB. {choice_b}\nC. {choice_c}\nD. {choice_d}\nRespond with exactly one uppercase letter: A, B, C, or D.\nAnswer: "
+  },
+  "configurations": [
+    {
+      "id": "cpu-vA-t1-b512-u128",
+      "version": "<UNRESOLVED_LLAMA_CPP_VERSION_A>",
+      "binary": "tools/llama.cpp/<UNRESOLVED_LLAMA_CPP_TAG_A>/cpu/llama-server.exe",
+      "candidate_url": "https://github.com/ggml-org/llama.cpp/releases/download/<UNRESOLVED_LLAMA_CPP_TAG_A>/<UNRESOLVED_WINDOWS_CPU_AVX2_ASSET_A>",
+      "release_asset_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_RELEASE_ASSET_SHA256>",
+      "binary_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_EXE_SHA256>",
+      "runtime_files_sha256": {
+        "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_RELATIVE_PATH>": "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_SHA256>"
+      },
+      "version_output_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_VERSION_OUTPUT_SHA256>",
+      "backend": "cpu",
+      "threads": 1,
+      "batch": 512,
+      "ubatch": 128,
+      "gpu_layers": 0,
+      "parallel": 1,
+      "load_workers": 0
+    },
+    {
+      "id": "cpu-vA-t4-b512-u128",
+      "version": "<UNRESOLVED_LLAMA_CPP_VERSION_A>",
+      "binary": "tools/llama.cpp/<UNRESOLVED_LLAMA_CPP_TAG_A>/cpu/llama-server.exe",
+      "candidate_url": "https://github.com/ggml-org/llama.cpp/releases/download/<UNRESOLVED_LLAMA_CPP_TAG_A>/<UNRESOLVED_WINDOWS_CPU_AVX2_ASSET_A>",
+      "release_asset_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_RELEASE_ASSET_SHA256>",
+      "binary_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_EXE_SHA256>",
+      "runtime_files_sha256": {
+        "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_RELATIVE_PATH>": "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_SHA256>"
+      },
+      "version_output_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_VERSION_OUTPUT_SHA256>",
+      "backend": "cpu",
+      "threads": 4,
+      "batch": 512,
+      "ubatch": 128,
+      "gpu_layers": 0,
+      "parallel": 1,
+      "load_workers": 0
+    },
+    {
+      "id": "cpu-vA-t8-b512-u128",
+      "version": "<UNRESOLVED_LLAMA_CPP_VERSION_A>",
+      "binary": "tools/llama.cpp/<UNRESOLVED_LLAMA_CPP_TAG_A>/cpu/llama-server.exe",
+      "candidate_url": "https://github.com/ggml-org/llama.cpp/releases/download/<UNRESOLVED_LLAMA_CPP_TAG_A>/<UNRESOLVED_WINDOWS_CPU_AVX2_ASSET_A>",
+      "release_asset_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_RELEASE_ASSET_SHA256>",
+      "binary_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_EXE_SHA256>",
+      "runtime_files_sha256": {
+        "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_RELATIVE_PATH>": "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_SHA256>"
+      },
+      "version_output_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_VERSION_OUTPUT_SHA256>",
+      "backend": "cpu",
+      "threads": 8,
+      "batch": 512,
+      "ubatch": 128,
+      "gpu_layers": 0,
+      "parallel": 1,
+      "load_workers": 0
+    },
+    {
+      "id": "cpu-vA-t16-b512-u128",
+      "version": "<UNRESOLVED_LLAMA_CPP_VERSION_A>",
+      "binary": "tools/llama.cpp/<UNRESOLVED_LLAMA_CPP_TAG_A>/cpu/llama-server.exe",
+      "candidate_url": "https://github.com/ggml-org/llama.cpp/releases/download/<UNRESOLVED_LLAMA_CPP_TAG_A>/<UNRESOLVED_WINDOWS_CPU_AVX2_ASSET_A>",
+      "release_asset_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_RELEASE_ASSET_SHA256>",
+      "binary_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_EXE_SHA256>",
+      "runtime_files_sha256": {
+        "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_RELATIVE_PATH>": "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_SHA256>"
+      },
+      "version_output_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_VERSION_OUTPUT_SHA256>",
+      "backend": "cpu",
+      "threads": 16,
+      "batch": 512,
+      "ubatch": 128,
+      "gpu_layers": 0,
+      "parallel": 1,
+      "load_workers": 0
+    },
+    {
+      "id": "cpu-vA-t8-b256-u64",
+      "version": "<UNRESOLVED_LLAMA_CPP_VERSION_A>",
+      "binary": "tools/llama.cpp/<UNRESOLVED_LLAMA_CPP_TAG_A>/cpu/llama-server.exe",
+      "candidate_url": "https://github.com/ggml-org/llama.cpp/releases/download/<UNRESOLVED_LLAMA_CPP_TAG_A>/<UNRESOLVED_WINDOWS_CPU_AVX2_ASSET_A>",
+      "release_asset_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_RELEASE_ASSET_SHA256>",
+      "binary_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_EXE_SHA256>",
+      "runtime_files_sha256": {
+        "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_RELATIVE_PATH>": "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_SHA256>"
+      },
+      "version_output_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_VERSION_OUTPUT_SHA256>",
+      "backend": "cpu",
+      "threads": 8,
+      "batch": 256,
+      "ubatch": 64,
+      "gpu_layers": 0,
+      "parallel": 1,
+      "load_workers": 0
+    },
+    {
+      "id": "cpu-vA-t8-b1024-u256",
+      "version": "<UNRESOLVED_LLAMA_CPP_VERSION_A>",
+      "binary": "tools/llama.cpp/<UNRESOLVED_LLAMA_CPP_TAG_A>/cpu/llama-server.exe",
+      "candidate_url": "https://github.com/ggml-org/llama.cpp/releases/download/<UNRESOLVED_LLAMA_CPP_TAG_A>/<UNRESOLVED_WINDOWS_CPU_AVX2_ASSET_A>",
+      "release_asset_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_RELEASE_ASSET_SHA256>",
+      "binary_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_EXE_SHA256>",
+      "runtime_files_sha256": {
+        "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_RELATIVE_PATH>": "<UNRESOLVED_VERSION_A_CPU_RUNTIME_DLL_SHA256>"
+      },
+      "version_output_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_CPU_VERSION_OUTPUT_SHA256>",
+      "backend": "cpu",
+      "threads": 8,
+      "batch": 1024,
+      "ubatch": 256,
+      "gpu_layers": 0,
+      "parallel": 1,
+      "load_workers": 0
+    },
+    {
+      "id": "vulkan-vA-t8-b512-u128",
+      "version": "<UNRESOLVED_LLAMA_CPP_VERSION_A>",
+      "binary": "tools/llama.cpp/<UNRESOLVED_LLAMA_CPP_TAG_A>/vulkan/llama-server.exe",
+      "candidate_url": "https://github.com/ggml-org/llama.cpp/releases/download/<UNRESOLVED_LLAMA_CPP_TAG_A>/<UNRESOLVED_WINDOWS_VULKAN_ASSET_A>",
+      "release_asset_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_VULKAN_RELEASE_ASSET_SHA256>",
+      "binary_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_VULKAN_EXE_SHA256>",
+      "runtime_files_sha256": {
+        "<UNRESOLVED_VERSION_A_VULKAN_RUNTIME_DLL_RELATIVE_PATH>": "<UNRESOLVED_VERSION_A_VULKAN_RUNTIME_DLL_SHA256>"
+      },
+      "version_output_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_A_VULKAN_VERSION_OUTPUT_SHA256>",
+      "backend": "vulkan",
+      "threads": 8,
+      "batch": 512,
+      "ubatch": 128,
+      "gpu_layers": 99,
+      "parallel": 1,
+      "load_workers": 0
+    },
+    {
+      "id": "cpu-vB-t8-b512-u128",
+      "version": "<UNRESOLVED_LLAMA_CPP_VERSION_B>",
+      "binary": "tools/llama.cpp/<UNRESOLVED_LLAMA_CPP_TAG_B>/cpu/llama-server.exe",
+      "candidate_url": "https://github.com/ggml-org/llama.cpp/releases/download/<UNRESOLVED_LLAMA_CPP_TAG_B>/<UNRESOLVED_WINDOWS_CPU_AVX2_ASSET_B>",
+      "release_asset_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_B_CPU_RELEASE_ASSET_SHA256>",
+      "binary_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_B_CPU_EXE_SHA256>",
+      "runtime_files_sha256": {
+        "<UNRESOLVED_VERSION_B_CPU_RUNTIME_DLL_RELATIVE_PATH>": "<UNRESOLVED_VERSION_B_CPU_RUNTIME_DLL_SHA256>"
+      },
+      "version_output_sha256": "<UNRESOLVED_LLAMA_CPP_VERSION_B_CPU_VERSION_OUTPUT_SHA256>",
+      "backend": "cpu",
+      "threads": 8,
+      "batch": 512,
+      "ubatch": 128,
+      "gpu_layers": 0,
+      "parallel": 1,
+      "load_workers": 0
+    }
+  ]
+}
