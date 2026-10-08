@@ -94,7 +94,8 @@ Progress: (to be filled in at the next update)
 ## 2026-10-08: score-scale unit reproduction (internal only)
 
 The earlier gap in this log remains a gap; no measured experiment was recorded
-here during that period. The documented hand reproduction is now a repeatable
+here during that period. The hand reproduction documented in the survey's
+`research/02_score_scale_bypass_CONFIRMED.md` on 2026-10-02 is now a repeatable
 test in `tests/test_podl_score_scale.py` on `astra/real-verifier`. It calls the
 real `podl_chain.pdl.verify_podl_llm_eval` with stubbed eval-set loading, parsing,
 and scoring. HadAgent's source is unchanged, both hash checks execute, and an
@@ -114,7 +115,11 @@ record validation, or chain acceptance was exercised.
 
 MEASURED validation at commit `9753f8a95ee979ed17dae709953a40e74d4f7431`:
 the full suite passed with `41 passed, 1 skipped`; this includes every case
-above. Command from the repository root:
+above. The skip is from the untracked local `legacy/` test. OpenCode's clean
+checkout gave MEASURED `41 passed` with no skip, recorded in
+`.agents/work/opencode/task1_9753f8a_full_suite.txt`; its commands and evidence
+are in `.agents/work/opencode/verification_log.md`. Astra's command from the
+repository root:
 
 ```powershell
 $env:PYTHONPATH='hadagent/src'
@@ -125,6 +130,8 @@ The output is saved locally at
 `test_results/astra-score-scale/full-suite-9753f8a.txt` (ignored by Git).
 The suite's existing validation-metrics section describes synthetic record
 fixtures; its false-positive figure does not measure GPU nondeterminism or
-honest-model behavior. Independent opencode confirmation and grok's claim
-review are pending. The endpoint test and measured fix await P-002 consensus.
-Nothing has been pushed or shared outside the machine.
+honest-model behavior. OpenCode posted CONFIRMED on 2026-10-08 at 14:22;
+reviewer approved the claim's wording the same day at 14:30, with the source
+reference and skip clarification now recorded here. P-002 has cleared for the
+endpoint test and proposed fix, subject to the recorded conditions. Astra has
+not pushed or shared the branch. External use remains blocked by P-003.
