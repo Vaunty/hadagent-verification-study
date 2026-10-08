@@ -135,3 +135,63 @@ reviewer approved the claim's wording the same day at 14:30, with the source
 reference and skip clarification now recorded here. P-002 has cleared for the
 endpoint test and proposed fix, subject to the recorded conditions. Astra has
 not pushed or shared the branch. External use remains blocked by P-003.
+
+## 2026-10-08: endpoint test and proposed scale fix (P-002, internal only)
+
+P-002 cleared with reviewer's conditions. The implementation is on
+`astra/real-verifier`, commit `3886e2489fd7ebf6f7bf4b8ab30f43fbcd2efb29`.
+HadAgent's source and block-validation path remain unchanged. The observations
+below await opencode's clean-checkout confirmation and reviewer's wording
+review before use as project or paper evidence.
+
+`tests/test_podl_endpoint_trust.py` constructs a lookup table from a synthetic
+eval set inside the test and replaces only `urllib.request.urlopen`. The real
+file loader, parser, request builder, scorer, and original verifier execute.
+SIMULATED inputs: 5 prompt/answer pairs, payload scale 10,000, threshold 8,000,
+and matching claims of 10,000 for table answers or 0 for deliberately wrong
+answers. MEASURED decisions: the original verifier accepts the table answers
+and rejects the wrong-answer control. Each run checks the requested URL,
+request body, and complete prompt sequence. No network request, server process,
+real benchmark answer key, or model is involved.
+
+`core/podl_verifier.py` contains a proposed patched copy with a fixed protocol
+scale of 10,000. It interprets claims in those same units and requires
+`correct * PROTOCOL_SCORE_SCALE >= threshold * total`. It still parses the
+payload's scale to preserve input errors, but that value cannot change the
+arithmetic. This is a proposal for the authors; it is not an upstream fix.
+`tests/test_podl_fixed_scale.py` compares the original and patched functions
+on identical SIMULATED inputs and asserts the MEASURED decisions below.
+The SIMULATED eval-set size is 100 and the fixture threshold is 8,000.
+
+| Correct (SIMULATED) | Payload scale (SIMULATED) | Claim (SIMULATED) | Original decision (MEASURED) | Patched-copy decision (MEASURED) |
+|---|---|---|---|---|
+| 85 | 10,000 | 8,500 | accept | accept |
+| 10 | 10,000 | 1,000 | reject: below target | reject: below target |
+| 1 | 1,000,000 | 10,000 | accept | reject: claim mismatch; computed 100 |
+| 0 | 1,000,000 | 0 | reject: below target | reject: below target |
+| 79 | 10,000 | 7,900 | reject: below target | reject: below target |
+| 80 | 10,000 | 8,000 | accept | accept |
+
+The patched copy also rejects the SIMULATED low-score case with its corrected
+canonical claim of 100 at either tested payload scale (10,000 or 1,000,000).
+MEASURED: it reaches the below-target rejection, so fixing the claim alone
+does not restore acceptance. The tests also check provider/hash rejections,
+missing or malformed scale errors, and unchanged payloads. Endpoint trust
+remains unresolved: the HTTP lookup test produces the same accept/reject
+decisions for the proposed copy as for the original verifier.
+
+MEASURED full-suite validation at the implementation commit above:
+`60 passed, 1 skipped in 1.78s`. The skip is the untracked local
+`legacy/retired_llm_phase/tests/test_geometry.py` because `sklearn` is absent.
+Command from the repository root:
+
+```powershell
+$env:PYTHONPATH='hadagent/src'
+.venv\Scripts\python -m pytest -v -rs 2>&1 | Tee-Object -FilePath 'test_results/astra-p002/full-suite-3886e24.txt'
+```
+
+The named output is local and ignored by Git. These are unit-level observations
+with SIMULATED evaluation data; no model accuracy, signed record, block,
+running chain, or GPU nondeterminism was tested. A supporting read-only code
+review found no remaining blockers; it does not replace opencode or reviewer.
+No merge into `main`, push, or external sharing was performed.
