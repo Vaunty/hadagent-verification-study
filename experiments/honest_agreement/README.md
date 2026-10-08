@@ -11,7 +11,7 @@ Do not combine the modes in one plan, JSONL file, or report. Neither mode estima
 
 ## Approval and machine boundary
 
-Planning, stub tests, and static review are GREEN. Artifact retrieval, reference calibration with the real model, and the measured matrix remain pending P-005 approval. An `--approval-note` records an approval that already exists; it does not grant one.
+Planning, stub tests, and static review are GREEN. Artifact retrieval, reference calibration with the real model, and the measured matrix require recorded P-005 approval and its conditions to be met. An `--approval-note` records an approval that already exists; it does not grant one. Matthew's approval is now recorded in the local outbox; this preparation task still follows the user's explicit no-download instruction.
 
 The intended machine class is a consumer CPU with an integrated GPU. A resolved plan must record `cpu`, `gpu`, `driver`, `ram`, and `os` exactly as observed. Do not install a driver or Vulkan SDK, request administrator rights, change firewall rules, or accept a firewall prompt for this experiment. Bind only to `127.0.0.1`. If the approved llama.cpp build cannot use Vulkan as shipped, record the Vulkan cells as failed or missing and report that fact; do not repair the environment during the run.
 

@@ -293,7 +293,8 @@ The README is an **unresolved candidate manifest**, not a verified download
 list: exact llama.cpp release tags/assets, immutable model/data revisions,
 publisher digests, dataset download location, and licenses still need authorized
 source verification. It marks these gaps explicitly rather than inventing pins.
-P-005 has agent consensus but still awaits Matthew's RED approval. Reference
-calibration, downloads, real inference, and CLI/backend compatibility checks have
+The final outbox check found Matthew's recorded P-005 approval dated
+2026-10-08 16:38. This task stayed within the user's explicit offline preparation
+and no-download scope. Reference calibration, downloads, real inference, and CLI/backend compatibility checks have
 not happened. OpenCode's independent rerun and reviewer's wording approval are
 also pending; no empirical model-agreement result is ready for the paper or CRA.
