@@ -130,35 +130,63 @@ The output is saved locally at
 `test_results/astra-score-scale/full-suite-9753f8a.txt` (ignored by Git).
 The suite's existing validation-metrics section describes synthetic record
 fixtures; its false-positive figure does not measure GPU nondeterminism or
-honest-model behavior. OpenCode posted CONFIRMED on 2026-10-08 at 14:22;
-reviewer approved the claim's wording the same day at 14:30, with the source
-reference and skip clarification now recorded here. P-002 has cleared for the
-endpoint test and proposed fix, subject to the recorded conditions. Astra has
+honest-model behavior. OpenCode posted CONFIRMED on 2026-10-08 at 14:22.
+At 14:30 that day, reviewer approved the claim's wording with three edits,
+now applied: the source reference, skip clarification, and reviewer/confirmation
+status are recorded here. P-002 has cleared for the endpoint test and proposed
+fix, subject to the recorded conditions. Astra has
 not pushed or shared the branch. External use remains blocked by P-003.
 
 ## 2026-10-08: endpoint test and proposed scale fix (P-002, internal only)
 
 P-002 cleared with reviewer's conditions. The implementation is on
 `astra/real-verifier`, commit `3886e2489fd7ebf6f7bf4b8ab30f43fbcd2efb29`.
-HadAgent's source and block-validation path remain unchanged. The observations
-below await opencode's clean-checkout confirmation and reviewer's wording
-review before use as project or paper evidence.
+HadAgent's source and block-validation path remain unchanged. OpenCode posted
+CONFIRMED for the scoped tests on 2026-10-08 at 14:57. Reviewer approved the
+wording with edits at 15:20; those edits are now applied, including the choice
+to retain the tested copy and state explicitly that it ignores the payload's
+scale in its arithmetic. External use remains blocked by P-003.
 
 `tests/test_podl_endpoint_trust.py` constructs a lookup table from a synthetic
 eval set inside the test and replaces only `urllib.request.urlopen`. The real
 file loader, parser, request builder, scorer, and original verifier execute.
 SIMULATED inputs: 5 prompt/answer pairs, payload scale 10,000, threshold 8,000,
 and matching claims of 10,000 for table answers or 0 for deliberately wrong
-answers. MEASURED decisions: the original verifier accepts the table answers
-and rejects the wrong-answer control. Each run checks the requested URL,
-request body, and complete prompt sequence. No network request, server process,
-real benchmark answer key, or model is involved.
+answers. MEASURED: the unmodified verifier sends every audit prompt to the
+endpoint URL taken from the prover's payload and accepts the full-score claim
+when that endpoint answers from the lookup table. It rejects the wrong-answer
+control. Each run checks the payload-supplied URL, request body, and complete
+prompt sequence. No network request, server process, real benchmark answer
+key, or model is involved.
 
-`core/podl_verifier.py` contains a proposed patched copy with a fixed protocol
-scale of 10,000. It interprets claims in those same units and requires
+Code inspection at the implementation commit explains the trust issue:
+`hadagent/src/podl_chain/model.py:115` loads the eval-set JSONL in the helper
+used by miners, hashes those bytes, and parses prompt/answer pairs; the parser
+reads the answer field at `model.py:76`. The verifier hash-checks its eval-set
+bytes at `pdl.py:92` and passes `payload_obj["endpoint"]` to the scorer at
+`pdl.py:108`. Thus the prototype's miner helper has the answer-bearing eval
+set, and this verification function checks responses from a prover-chosen
+endpoint without binding them to the committed model. This finding concerns
+that check; it does not establish that lookup tables are generally undetectable.
+
+`core/podl_verifier.py` contains a proposed patched copy with a fixed reference
+scale of 10,000 (a SIMULATED setting in these tests). It interprets
+claims in those same units and requires
 `correct * PROTOCOL_SCORE_SCALE >= threshold * total`. It still parses the
-payload's scale to preserve input errors, but that value cannot change the
-arithmetic. This is a proposal for the authors; it is not an upstream fix.
+payload's scale to preserve input errors, but ignores the payload's scale in
+the arithmetic. It does not reject a scale different from its fixed reference:
+with SIMULATED inputs
+of 85 correct out of 100, payload scale 1,000,000, and canonical claim 8,500,
+the copy accepts (MEASURED). The payload can therefore declare a scale different
+from the units used to interpret its claim. Strict rejection is an alternative
+design, not implemented or measured here. This is a proposal for the authors;
+it is not an upstream fix.
+
+The SIMULATED threshold of 8,000 is interpreted in 10,000 units. Code inspection
+supports that choice: `block.py:120` sets the threshold, `model.py:108` defaults
+the miner helper's scale, and `demo_build_validate.py:101` uses the same scale
+(all under `hadagent/src/podl_chain` at the implementation commit). The proposed
+copy codifies that default; the original verifier does not enforce it.
 `tests/test_podl_fixed_scale.py` compares the original and patched functions
 on identical SIMULATED inputs and asserts the MEASURED decisions below.
 The SIMULATED eval-set size is 100 and the fixture threshold is 8,000.
@@ -171,6 +199,10 @@ The SIMULATED eval-set size is 100 and the fixture threshold is 8,000.
 | 0 | 1,000,000 | 0 | reject: below target | reject: below target |
 | 79 | 10,000 | 7,900 | reject: below target | reject: below target |
 | 80 | 10,000 | 8,000 | accept | accept |
+
+MEASURED: the five tested control decisions are unchanged, for SIMULATED counts
+of 85, 80 (at threshold), 79, 10, and 0 correct out of 100. This statement is
+limited to those controls; it does not claim general behavioral equivalence.
 
 The patched copy also rejects the SIMULATED low-score case with its corrected
 canonical claim of 100 at either tested payload scale (10,000 or 1,000,000).
@@ -188,6 +220,19 @@ Command from the repository root:
 ```powershell
 $env:PYTHONPATH='hadagent/src'
 .venv\Scripts\python -m pytest -v -rs 2>&1 | Tee-Object -FilePath 'test_results/astra-p002/full-suite-3886e24.txt'
+```
+
+OpenCode's clean-checkout rerun at the same implementation commit is CONFIRMED:
+MEASURED `23 passed in 0.88s` for the targeted files and `60 passed in 4.00s`
+for the full suite, with no skip. Outputs are
+`.agents/work/opencode/p002_3886e24_targeted.txt` and
+`.agents/work/opencode/p002_3886e24_full_suite.txt`. From the clean worktree,
+OpenCode used the existing environment with these commands:
+
+```powershell
+$env:PYTHONPATH='hadagent/src'
+& 'C:\Users\matth\OneDrive\Desktop\RedTeamHarness\.venv\Scripts\python.exe' -m pytest tests/test_podl_score_scale.py tests/test_podl_endpoint_trust.py tests/test_podl_fixed_scale.py -v
+& 'C:\Users\matth\OneDrive\Desktop\RedTeamHarness\.venv\Scripts\python.exe' -m pytest -q -rs
 ```
 
 The named output is local and ignored by Git. These are unit-level observations
