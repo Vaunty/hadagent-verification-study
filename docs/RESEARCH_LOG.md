@@ -240,3 +240,60 @@ with SIMULATED evaluation data; no model accuracy, signed record, block,
 running chain, or GPU nondeterminism was tested. A supporting read-only code
 review found no remaining blockers; it does not replace opencode or reviewer.
 No merge into `main`, push, or external sharing was performed.
+
+## 2026-10-08: P-005 offline experiment preparation
+
+Implemented `experiments/honest_agreement/` and its stub tests at
+`62c4ca24edac0e636523ff69331189f40296cbd9` on `astra/real-verifier`.
+This is GREEN preparation: no downloads, sockets, real model execution, or
+llama.cpp binaries were used in its tests. The runner calls HadAgent's real
+`score_exact_match` with its fixed `DecodeConfig` and hashes the same completions
+the scorer grades. The matrix mode represents the paper-described validator
+reexecution design. A separate mode pairs idle and concurrent-load scoring on
+one server instance, matching the prototype's miner-endpoint re-query path.
+
+The runner checks local artifact and source identities, limits transport to its
+owned loopback endpoint without proxies or redirects, records failures, and
+cleans up its server on errors and interrupts. It enforces the reference-score
+gate and execution deadlines. The analyzer requires the original plan, separates
+output agreement from score agreement, excludes the reference from comparison
+denominators, and reports failed or missing runs. Same-instance load comparisons
+are reported separately. These are descriptive score-equality components, not
+full-verifier or chain acceptance, deployment false-positive rates, or a
+contradiction of the paper's differently scoped tampering-detection result.
+
+MEASURED harness validation at the implementation commit: **98 passed, 1 skipped
+in 5.31s**, exit code 0. All model-like inputs and experiment rows in the added
+tests are SIMULATED. The skip remains the untracked legacy test that requires
+`sklearn`; it is absent from a clean checkout. The inherited validation-metrics
+summary printed by the suite concerns synthetic fixtures, not real-model
+agreement. Command from the repository root:
+
+```powershell
+$env:PYTHONPATH='hadagent/src'
+.venv\Scripts\python -m pytest -q -rs 2>&1 | Tee-Object -FilePath 'test_results/astra-p005/full-suite-62c4ca2.txt'
+```
+
+Output SHA-256:
+`F90A673C72D1301CADFCBA6809A602131C9B0C0D45E010DAE4BEF2B08665A890`.
+Plan-only validation at the same commit succeeded and printed the predeclared
+run IDs; these are design choices, not completed runs:
+
+```powershell
+$env:PYTHONPATH='hadagent/src'
+.venv\Scripts\python -m experiments.honest_agreement.run --config experiments/honest_agreement/plan.example.json 2>&1 | Tee-Object -FilePath 'test_results/astra-p005/plan-only-62c4ca2.txt'
+```
+
+Output SHA-256:
+`7E38BC2907E5C387C000F6F2B323D5EBCCABC1607E2E2C39BC6679FB6813FDDF`.
+Both outputs stay local and ignored. `hadagent/src`, `core`, and the dependency
+list are unchanged from the prior implementation. No merge or push occurred.
+
+The README is an **unresolved candidate manifest**, not a verified download
+list: exact llama.cpp release tags/assets, immutable model/data revisions,
+publisher digests, dataset download location, and licenses still need authorized
+source verification. It marks these gaps explicitly rather than inventing pins.
+P-005 has agent consensus but still awaits Matthew's RED approval. Reference
+calibration, downloads, real inference, and CLI/backend compatibility checks have
+not happened. OpenCode's independent rerun and reviewer's wording approval are
+also pending; no empirical model-agreement result is ready for the paper or CRA.
