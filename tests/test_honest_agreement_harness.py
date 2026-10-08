@@ -7,6 +7,7 @@ not model agreement. These tests never launch a binary, bind a socket, or fetch.
 from copy import deepcopy
 import io
 import json
+from pathlib import Path
 import subprocess
 import threading
 import urllib.error
@@ -151,6 +152,7 @@ def test_real_scorer_single_generation_and_analysis(prepared, monkeypatch):
         command = process.command
         assert command[command.index("--host") + 1] == "127.0.0.1"
         assert command[command.index("--n-gpu-layers") + 1] == "0"
+        assert "--device" not in command
         assert process.options["shell"] is False
         if run.os.name == "nt":
             assert process.options["creationflags"] == subprocess.CREATE_NO_WINDOW
@@ -175,7 +177,9 @@ def test_failed_run_recorded_and_server_stopped(prepared):
     world.cases[3].update(error=TimeoutError("SIMULATED timeout"), error_at=1)
     rows = execute(prepared)
     assert rows[3]["status"] == "failed" and rows[3]["result"] is None
-    assert rows[3]["error"]["completed_items"] == 1
+    assert rows[3]["error"] == {"stage": "scoring", "type": "TimeoutError",
+                                "message": "SIMULATED timeout", "completed_items": 1}
+    assert rows[3]["post_run_integrity"] == {"status": "ok", "error": None}
     assert not world.processes[3].active
     report = analyze.analyze_rows(rows, prepared[0])
     assert report["exact_score_equality_rejection_component"] == analyze.fraction(0, 4)
@@ -186,7 +190,6 @@ def test_failed_run_recorded_and_server_stopped(prepared):
                                          ("C", "Cannot decide"), ("D", "Depends on context")])
 def test_prefix_matches_are_reported_separately_from_bare_letters(prepared, letter, text):
     plan, world, output = prepared
-    from pathlib import Path
     path = Path(plan["evalset"]["path"])
     entries = [json.loads(line) for line in path.read_text().splitlines()]
     entries[0]["answer"] = letter
@@ -229,6 +232,9 @@ def test_interrupt_stops_owned_server_and_reports_missing_runs(prepared):
     world.cases[3]["error"] = KeyboardInterrupt()
     rows = execute(prepared)
     assert len(rows) == 4 and rows[-1]["status"] == "interrupted"
+    assert rows[-1]["error"] == {"stage": "scoring", "type": "KeyboardInterrupt",
+                                 "message": "", "completed_items": 0}
+    assert rows[-1]["post_run_integrity"] == {"status": "ok", "error": None}
     assert all(not process.active for process in world.processes)
     report = analyze.analyze_rows(rows, prepared[0])
     assert report["missing_runs"] == ["candidate/repeat-1", "candidate/repeat-2"]
@@ -246,7 +252,36 @@ def test_failed_cleanup_stops_the_matrix(prepared):
     _, world, _ = prepared
     world.cases[0].update(needs_kill=True, kill_fails=True)
     rows = execute(prepared)
-    assert len(rows) == 1 and rows[0]["error"]["type"] == "ServerCleanupError"
+    assert len(rows) == 1
+    assert rows[0]["error"]["type"] == "ServerCleanupError"
+    assert rows[0]["error"]["stage"] == "shutdown"
+    assert rows[0]["post_run_integrity"] == {"status": "ok", "error": None}
+
+
+def test_failure_path_postcheck_detects_mutation_and_aborts_matrix(prepared, monkeypatch):
+    plan, world, _ = prepared
+    model = Path(plan["model"]["path"])
+    original_open = world.open
+
+    def mutate_then_timeout(request, timeout):
+        process = world.current
+        if not isinstance(request, str) and process.index == 3 and process.items == 1:
+            model.write_bytes(b"SIMULATED mutation after one completed item")
+            raise TimeoutError("SIMULATED timeout after mutation")
+        return original_open(request, timeout)
+
+    monkeypatch.setattr(world, "open", mutate_then_timeout)
+    rows = execute(prepared)
+    assert len(rows) == len(world.processes) == 4
+    row = rows[-1]
+    assert row["run_id"] == "candidate/repeat-0"
+    assert row["status"] == "failed" and row["result"] is None
+    assert row["error"] == {"stage": "scoring", "type": "TimeoutError",
+                            "message": "SIMULATED timeout after mutation", "completed_items": 1}
+    assert row["post_run_integrity"]["status"] == "failed"
+    assert row["post_run_integrity"]["error"]["type"] == "ValueError"
+    assert "checksum mismatch" in row["post_run_integrity"]["error"]["message"]
+    assert row["stop_reason"] == "post-run integrity check failed; abort matrix"
 
 
 def test_early_server_exit_is_a_failed_run(prepared):
@@ -264,6 +299,98 @@ def test_hash_mismatch_prevents_any_process(prepared):
     with pytest.raises(ValueError, match="checksum mismatch"):
         execute(prepared)
     assert not world.processes and not output.exists()
+
+
+def test_code_commit_uses_verified_bundle_provenance_without_git(tmp_path, monkeypatch):
+    sources = {name: run.digest(name.encode()) for name in run.SOURCE_FILES}
+    (tmp_path / "bundle-provenance.json").write_text(json.dumps({
+        "source_commit": "B" * 40,
+        "source_files_sha256": sources,
+    }), encoding="utf-8")
+    monkeypatch.setattr(run, "ROOT", tmp_path)
+    monkeypatch.setattr(run, "source_hashes", lambda: sources)
+    monkeypatch.setattr(run.subprocess, "run", lambda *a, **k: pytest.fail("Git must not run"))
+    assert run.code_commit() == "b" * 40
+
+
+def test_bad_bundle_source_provenance_never_falls_back_to_git(tmp_path, monkeypatch):
+    current = {name: run.digest(name.encode()) for name in run.SOURCE_FILES}
+    recorded = dict(current)
+    recorded[run.SOURCE_FILES[0]] = "0" * 64
+    (tmp_path / "bundle-provenance.json").write_text(json.dumps({
+        "source_commit": "b" * 40,
+        "source_files_sha256": recorded,
+    }), encoding="utf-8")
+    monkeypatch.setattr(run, "ROOT", tmp_path)
+    monkeypatch.setattr(run, "source_hashes", lambda: current)
+    monkeypatch.setattr(run.subprocess, "run", lambda *a, **k: pytest.fail("Git must not run"))
+    with pytest.raises(ValueError, match="source hashes"):
+        run.code_commit()
+
+
+@pytest.mark.parametrize(("scope", "backend", "gpu_layers", "device", "valid"), [
+    (run.CPU_IGPU_SCOPE, "cpu", 0, None, True),
+    (run.CPU_IGPU_SCOPE, "cpu", 0, "none", True),
+    (run.CPU_IGPU_SCOPE, "vulkan", 1, None, True),
+    (run.CPU_IGPU_SCOPE, "cuda", 1, "CUDA0", False),
+    (run.NVIDIA_GPU_SCOPE, "cpu", 0, None, True),
+    (run.NVIDIA_GPU_SCOPE, "cpu", 0, "CUDA0", False),
+    (run.NVIDIA_GPU_SCOPE, "vulkan", 1, None, False),
+    (run.NVIDIA_GPU_SCOPE, "vulkan", 1, "Vulkan0", True),
+    (run.NVIDIA_GPU_SCOPE, "vulkan", 1, "CUDA0", False),
+    (run.NVIDIA_GPU_SCOPE, "cuda", 1, None, False),
+    (run.NVIDIA_GPU_SCOPE, "cuda", 1, "CUDA0", True),
+    (run.NVIDIA_GPU_SCOPE, "cuda", 1, "CUDA0,Vulkan0", False),
+    (run.NVIDIA_GPU_SCOPE, "cuda", 0, "CUDA0", False),
+])
+def test_backend_validation_matches_approved_hardware_scope(prepared, scope, backend,
+                                                            gpu_layers, device, valid):
+    plan = prepared[0]
+    plan["hardware"]["scope"] = scope
+    for config in plan["configurations"]:
+        config.update(backend=backend, gpu_layers=gpu_layers)
+        config.pop("device", None)
+        if device is not None:
+            config["device"] = device
+    if valid:
+        run.validate_plan(plan)
+    else:
+        with pytest.raises(ValueError):
+            run.validate_plan(plan)
+
+
+def test_device_is_a_safe_explicit_command_and_configuration_dimension(prepared):
+    plan = prepared[0]
+    plan["hardware"]["scope"] = run.NVIDIA_GPU_SCOPE
+    first, second = plan["configurations"]
+    for config, device in ((first, "CUDA0"), (second, "CUDA1")):
+        config.update(backend="cuda", threads=1, gpu_layers=99, device=device)
+    run.validate_plan(plan)  # Device is what distinguishes otherwise duplicate factors.
+    command = run.command_for(plan, first, "server", "model", 1234)
+    assert command.count("--device") == 1
+    assert command[command.index("--device") + 1] == "CUDA0"
+
+
+def test_analyzer_rejects_device_different_from_original_plan(prepared):
+    plan = prepared[0]
+    plan["hardware"]["scope"] = run.NVIDIA_GPU_SCOPE
+    for config in plan["configurations"]:
+        config.update(backend="cuda", gpu_layers=99, device="CUDA0")
+    rows = execute(prepared)
+    rows[0]["config"]["device"] = "CUDA1"
+    with pytest.raises(ValueError, match="configuration differs"):
+        analyze.analyze_rows(rows, plan)
+
+
+def test_desktop_report_uses_frozen_nvidia_scope_without_cpu_vulkan_boilerplate(prepared):
+    plan = prepared[0]
+    plan["hardware"]["scope"] = run.NVIDIA_GPU_SCOPE
+    for config in plan["configurations"]:
+        config.update(backend="cuda", gpu_layers=99, device="CUDA0")
+    report = analyze.analyze_rows(execute(prepared), plan)
+    assert report["scope"] == f"{run.NVIDIA_GPU_SCOPE}; tested settings only"
+    assert "Backend is requested, not verified: inspect server logs before backend-specific claims." in report["limitations"]
+    assert all("CPU/Vulkan" not in limitation for limitation in report["limitations"])
 
 
 @pytest.mark.parametrize("change", ["modified", "extra"])
@@ -415,6 +542,75 @@ def test_budget_prevents_starting_later_runs(prepared, monkeypatch):
     assert len(analyze.analyze_rows(rows, prepared[0])["missing_runs"]) == 5
 
 
+def test_expired_external_deadline_rejects_before_artifacts_or_process(prepared, monkeypatch):
+    plan, world, output = prepared
+    monkeypatch.setattr(run.time, "monotonic", lambda: 100.0)
+    monkeypatch.setattr(run, "checked_artifact",
+                        lambda *a, **k: pytest.fail("artifact access must not occur"))
+    with pytest.raises(TimeoutError, match="external study deadline already passed"):
+        run.run_experiment(plan, output, approval_note="GREEN stubs", evidence_label="SIMULATED",
+                           external_deadline=100.0)
+    assert not world.processes and not output.exists()
+
+
+def test_external_deadline_preserves_fixed_six_cell_order_and_missing_runs(prepared, monkeypatch):
+    plan, world, output = prepared
+    base = deepcopy(plan["configurations"][0])
+    binary_b = output.parent / "fake-server-b.exe"
+    binary_b.write_bytes(b"SIMULATED second-build binary bytes; never executed")
+    configurations = []
+    for name, updates in (
+        ("cpu-vA-t1-b512-u128", {"threads": 1}),
+        ("cpu-vA-t4-b512-u128", {"threads": 4}),
+        ("cpu-vA-t8-b512-u128", {"threads": 8}),
+        ("cpu-vA-t8-b256-u64", {"threads": 8, "batch": 256, "ubatch": 64}),
+        ("vulkan-vA-t8-b512-u128", {"threads": 8, "backend": "vulkan", "gpu_layers": 99}),
+        ("cpu-vB-t8-b512-u128", {"threads": 8, "version": "SIMULATED-version-B",
+                                  "binary": str(binary_b),
+                                  "binary_sha256": run.digest(binary_b.read_bytes())}),
+    ):
+        config = deepcopy(base)
+        config.update(id=name, batch=512, ubatch=128)
+        config.update(updates)
+        configurations.append(config)
+    plan.update(repeats=1, configurations=configurations,
+                reference_run_id="cpu-vA-t1-b512-u128/repeat-0")
+
+    clock = [100.0]
+    external_deadline = 102.0
+    completed = []
+    original_measure = run.measure_session
+
+    def measured(*args, **kwargs):
+        assert args[10] == external_deadline
+        session = original_measure(*args, **kwargs)
+        completed.append((args[1]["id"], clock[0],
+                          all(not process.active for process in world.processes),
+                          all(row["post_run_integrity"]["status"] == "ok" for row in session)))
+        # Cross time only after cleanup/integrity; the caller must write these rows, then stop.
+        clock[0] += 1
+        return session
+
+    monkeypatch.setattr(run.time, "monotonic", lambda: clock[0])
+    monkeypatch.setattr(run, "measure_session", measured)
+    rows = run.run_experiment(plan, output, approval_note="GREEN stubs",
+                              evidence_label="SIMULATED", external_deadline=external_deadline)
+
+    expected_ids = [f"{config['id']}/repeat-0" for config in configurations]
+    assert [row["run_id"] for row in rows] == expected_ids[:2]
+    assert completed == [(configurations[0]["id"], 100.0, True, True),
+                         (configurations[1]["id"], 101.0, True, True)]
+    assert clock[0] == external_deadline
+    assert len(world.processes) == 2 and all(not process.active for process in world.processes)
+    assert rows == [json.loads(line) for line in output.read_text().splitlines()]
+    report = analyze.analyze_rows(rows, plan)
+    assert report["missing_runs"] == expected_ids[2:]
+    assert report["run_coverage"] == {
+        "planned": 6, "attempted": 2, "successful": 2, "failed": 0,
+        "interrupted": 0, "missing": 4, "successful_fraction": analyze.fraction(2, 6),
+    }
+
+
 def load_plan(prepared):
     plan = prepared[0]
     plan.update(mode="same_endpoint_load", repeats=1, load_prompt="Benign synthetic background request")
@@ -422,6 +618,31 @@ def load_plan(prepared):
     plan["configurations"][0].update(parallel=2, load_workers=1)
     plan["reference_run_id"] = "reference/repeat-0/idle"
     return plan
+
+
+def test_postcheck_mismatch_invalidates_all_same_endpoint_phases(prepared, monkeypatch):
+    plan = load_plan(prepared)
+    model = Path(plan["model"]["path"])
+
+    def score_then_fail(_plan, _config, row, _pairs, _endpoint, _process, _transport):
+        if row["config"]["phase"] == "idle":
+            row["result"] = {"correct": 1, "total": 2, "score_scale": run.SCALE,
+                             "score_scaled": run.SCALE // 2, "outputs": []}
+            row["status"] = "ok"
+            return
+        model.write_bytes(b"SIMULATED mutation during loaded phase")
+        raise TimeoutError("SIMULATED loaded timeout after mutation")
+
+    monkeypatch.setattr(run, "score_phase", score_then_fail)
+    rows = execute(prepared)
+    assert [row["config"]["phase"] for row in rows] == ["idle", "loaded"]
+    assert all(row["status"] == "failed" and row["result"] is None for row in rows)
+    assert all(row["post_run_integrity"]["status"] == "failed" for row in rows)
+    assert all(row["stop_reason"] == "post-run integrity check failed; abort matrix" for row in rows)
+    assert rows[0]["error"]["stage"] == "integrity_after_run"
+    assert rows[1]["error"] == {"stage": "scoring", "type": "TimeoutError",
+                                "message": "SIMULATED loaded timeout after mutation",
+                                "completed_items": 0}
 
 
 def test_idle_loaded_share_one_process_with_real_background_worker(prepared, monkeypatch):

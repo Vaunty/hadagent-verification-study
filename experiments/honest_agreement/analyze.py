@@ -123,7 +123,9 @@ def analyze_rows(rows, plan):
         require_hash(row["release_asset_sha256"])
         for value in row["runtime_files_sha256"].values():
             require_hash(value)
-        if {k: cfg[k] for k in run.DIMENSIONS} != {k: original[k] for k in run.DIMENSIONS}:
+        if ({k: cfg[k] for k in run.DIMENSIONS} != {k: original[k] for k in run.DIMENSIONS}
+                or cfg.get("device") != original.get("device")
+                or ("device" in cfg) != ("device" in original)):
             raise ValueError("configuration differs from original plan")
         phases = ("idle", "loaded") if plan["mode"] == "same_endpoint_load" else ("single",)
         if cfg["phase"] not in phases or row["run_id"] != run.run_id(cfg, cfg["repeat"], cfg["phase"]):
@@ -267,7 +269,7 @@ def analyze_rows(rows, plan):
     return {
         "schema_version": run.SCHEMA_VERSION, "evidence_label": first["evidence_label"],
         "score_definition": run.SCORE_DEFINITION, "hadagent_rule_diagnostics": diagnostics,
-        "scope": "consumer CPU/iGPU; tested settings only",
+        "scope": f"{plan['hardware']['scope']}; tested settings only",
         "design": "paper-described validator reexecution" if plan["mode"] == "reexecution" else "prototype miner-endpoint re-query under concurrent load",
         "reference_run_id": reference["run_id"], "plan_sha256": first["plan_sha256"],
         "planned_runs": len(planned), "recorded_runs": len(rows),
@@ -294,7 +296,7 @@ def analyze_rows(rows, plan):
             "These descriptive fractions are not deployment false-positive estimates.",
             "This is a quantity the paper's tampering-detection evaluation does not measure; it does not contradict its 0% FP figure.",
             "Client request overlap establishes load, not simultaneous GPU kernel execution.",
-            "Backend is requested, not verified: inspect server logs before CPU/Vulkan claims.",
+            "Backend is requested, not verified: inspect server logs before backend-specific claims.",
         ],
     }
 

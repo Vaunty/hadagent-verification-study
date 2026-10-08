@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from dataclasses import asdict
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -30,6 +31,9 @@ from podl_chain import pdl
 SCALE = 10_000
 SCHEMA_VERSION = 2
 SCORE_DEFINITION = "HadAgent-rule score: case/whitespace-normalized prefix matches; not MMLU accuracy"
+CPU_IGPU_SCOPE = "consumer CPU/iGPU"
+NVIDIA_GPU_SCOPE = "one consumer NVIDIA GPU"
+HARDWARE_SCOPES = (CPU_IGPU_SCOPE, NVIDIA_GPU_SCOPE)
 ROOT = Path(__file__).resolve().parents[2]
 DIMENSIONS = ("id", "version", "version_output_sha256", "backend", "threads", "batch", "ubatch", "gpu_layers", "parallel", "load_workers")
 SOURCE_FILES = ("experiments/honest_agreement/run.py", "experiments/honest_agreement/analyze.py",
@@ -64,8 +68,9 @@ def validate_plan(plan: dict) -> None:
         raise ValueError("seed must be a nonnegative integer")
     if not isinstance(plan["hardware"], dict) or not plan["hardware"]:
         raise ValueError("hardware description is required")
-    if plan["hardware"].get("scope") != "consumer CPU/iGPU":
-        raise ValueError("P-005 hardware scope must be consumer CPU/iGPU")
+    hardware_scope = plan["hardware"].get("scope")
+    if hardware_scope not in HARDWARE_SCOPES:
+        raise ValueError("unsupported P-005 hardware scope")
     for name in ("cpu", "gpu", "driver", "ram", "os"):
         if not plan["hardware"].get(name):
             raise ValueError(f"hardware {name} is required")
@@ -95,14 +100,31 @@ def validate_plan(plan: dict) -> None:
             raise ValueError("ubatch must not exceed batch")
         if type(config["gpu_layers"]) is not int:
             raise ValueError("gpu_layers must be an integer")
-        if config["backend"] == "cpu":
+        backend = config["backend"]
+        device_present = "device" in config
+        device = config.get("device")
+        if backend == "cpu":
             if config["gpu_layers"] != 0:
                 raise ValueError("CPU runs must use zero GPU layers")
-        elif config["backend"] == "vulkan":
+            if device_present and device != "none":
+                raise ValueError("CPU runs may only omit device or use device 'none'")
+        elif backend == "vulkan":
             if config["gpu_layers"] <= 0:
                 raise ValueError("Vulkan runs must request positive GPU layers")
+        elif backend == "cuda":
+            if hardware_scope != NVIDIA_GPU_SCOPE:
+                raise ValueError("CUDA runs require the one consumer NVIDIA GPU scope")
+            if config["gpu_layers"] <= 0:
+                raise ValueError("CUDA runs must request positive GPU layers")
         else:
-            raise ValueError("only cpu and vulkan backends are in scope")
+            raise ValueError("only cpu, vulkan, and cuda backends are in scope")
+        if backend in ("vulkan", "cuda"):
+            if hardware_scope == NVIDIA_GPU_SCOPE and not device_present:
+                raise ValueError("NVIDIA-scope GPU runs require one explicit device")
+            prefix = "Vulkan" if backend == "vulkan" else "CUDA"
+            if device_present and (not isinstance(device, str)
+                                   or not re.fullmatch(rf"{prefix}[0-9]+", device)):
+                raise ValueError(f"{backend} device must name one {prefix} device")
         for name in ("binary", "binary_sha256", "version", "version_output_sha256"):
             if not config.get(name):
                 raise ValueError(f"configuration {name} is required")
@@ -115,7 +137,9 @@ def validate_plan(plan: dict) -> None:
             raise ValueError("same-endpoint mode requires exactly two slots, one load worker, and a prompt")
         if not isinstance(config.get("runtime_files_sha256"), dict) or not config.get("release_asset_sha256"):
             raise ValueError("release digest and runtime-file manifest are required")
-        factor = tuple(config[k] for k in DIMENSIONS if k not in ("id", "version", "version_output_sha256")) + (config["binary_sha256"],)
+        device_factor = None if backend == "cpu" else config.get("device")
+        factor = tuple(config[k] for k in DIMENSIONS if k not in ("id", "version", "version_output_sha256")) + (
+            device_factor, config["binary_sha256"])
         if factor in factors:
             raise ValueError("duplicate configuration factors would overweight a cell")
         factors.add(factor)
@@ -194,15 +218,39 @@ def checked_runtime(config, binary):
         raise ValueError("release contains an unpinned runtime DLL")
 
 
+def checked_session_integrity(config, artifacts, sources):
+    for key in ("model", "evalset", config["id"]):
+        checked_artifact(*artifacts[key])
+    checked_runtime(config, artifacts[config["id"]][0])
+    if source_hashes() != sources:
+        raise RuntimeError("experiment sources changed during execution")
+
+
 def process_options():
     return {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
 
 
 def code_commit():
-    return subprocess.run(
+    provenance_path = ROOT / "bundle-provenance.json"
+    if provenance_path.exists():
+        try:
+            provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise ValueError("invalid bundle provenance") from error
+        commit = provenance.get("source_commit") if isinstance(provenance, dict) else None
+        recorded_sources = provenance.get("source_files_sha256") if isinstance(provenance, dict) else None
+        if not isinstance(commit, str) or not re.fullmatch(r"[0-9a-fA-F]{40}", commit):
+            raise ValueError("bundle provenance requires a 40-hex source commit")
+        if recorded_sources != source_hashes():
+            raise ValueError("bundle provenance source hashes do not match current sources")
+        return commit.lower()
+    commit = subprocess.run(
         ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True, capture_output=True,
         text=True, timeout=10, **process_options(),
     ).stdout.strip()
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", commit):
+        raise RuntimeError("git did not report a 40-hex source commit")
+    return commit.lower()
 
 
 def read_version(binary):
@@ -224,11 +272,14 @@ def choose_port():
 
 def command_for(plan, config, binary, model, port):
     # No arbitrary extra flags: the caller cannot override binding or model.
-    return [binary, "--model", model, "--host", "127.0.0.1", "--port", str(port),
-            "--threads", str(config["threads"]), "--threads-batch", str(config["threads"]),
-            "--batch-size", str(config["batch"]), "--ubatch-size", str(config["ubatch"]),
-            "--n-gpu-layers", str(config["gpu_layers"]), "--ctx-size", str(plan["context_size"]),
-            "--parallel", str(config["parallel"]), "--seed", str(plan["seed"])]
+    command = [binary, "--model", model, "--host", "127.0.0.1", "--port", str(port),
+               "--threads", str(config["threads"]), "--threads-batch", str(config["threads"]),
+               "--batch-size", str(config["batch"]), "--ubatch-size", str(config["ubatch"]),
+               "--n-gpu-layers", str(config["gpu_layers"]), "--ctx-size", str(plan["context_size"]),
+               "--parallel", str(config["parallel"]), "--seed", str(plan["seed"])]
+    if "device" in config:
+        command.extend(["--device", config["device"]])
+    return command
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -369,7 +420,9 @@ def make_row(plan, config, repeat, phase, artifacts, label, approval_note, commi
         "run_id": run_id(config, repeat, phase), "reference_run_id": plan["reference_run_id"],
         "planned_run_ids": planned_runs(plan), "plan_sha256": digest(canonical(plan).encode()),
         "code_commit": commit, "code_sources_sha256": sources, "approval_note": approval_note,
-        "config": {**{k: config[k] for k in DIMENSIONS}, "repeat": repeat, "phase": phase},
+        "config": {**{k: config[k] for k in DIMENSIONS},
+                   **({"device": config["device"]} if "device" in config else {}),
+                   "repeat": repeat, "phase": phase},
         "context_size": plan["context_size"], "seed": plan["seed"],
         "hardware": plan["hardware"], "platform": platform.platform(),
         "artifacts": {"model_sha256": artifacts["model"][1],
@@ -382,6 +435,7 @@ def make_row(plan, config, repeat, phase, artifacts, label, approval_note, commi
         "status": "failed", "result": None, "error": None, "reported_version": None,
         "command": None, "server_pid": None, "stop_reason": None,
         "calibration_only": False,
+        "post_run_integrity": {"status": "pending", "error": None},
         "backend_effective": "UNVERIFIED (inspect server log before interpretation)",
         "load": None, "timing_s": {"startup": None, "scoring": None, "session_total": None},
     }
@@ -447,12 +501,9 @@ def measure_session(plan, config, repeat, artifacts, pairs, log_dir, label, appr
     started = time.monotonic()
     log_path = log_dir / f"{config['id']}-repeat-{repeat}.log"
     stage = "integrity"
+    integrity_stop = None
     try:
-        for key in ("model", "evalset", config["id"]):
-            checked_artifact(*artifacts[key])
-        checked_runtime(config, artifacts[config["id"]][0])
-        if source_hashes() != sources:
-            raise RuntimeError("experiment sources changed during execution")
+        checked_session_integrity(config, artifacts, sources)
         if time.monotonic() >= deadline:
             raise TimeoutError("experiment deadline exceeded")
         stage = "version"
@@ -485,15 +536,9 @@ def measure_session(plan, config, repeat, artifacts, pairs, log_dir, label, appr
                 if row["stop_reason"]:
                     break
             stage = "shutdown"
-        stage = "integrity_after_run"
-        for key in ("model", "evalset", config["id"]):
-            checked_artifact(*artifacts[key])
-        checked_runtime(config, artifacts[config["id"]][0])
-        if source_hashes() != sources:
-            raise RuntimeError("experiment sources changed during execution")
     except (Exception, KeyboardInterrupt) as error:
-        # A cleanup/integrity failure invalidates every phase in that session.
-        affected = rows if stage in ("shutdown", "integrity_after_run") or isinstance(error, ServerCleanupError) else [row]
+        # A cleanup failure invalidates every phase in that session.
+        affected = rows if stage == "shutdown" or isinstance(error, ServerCleanupError) else [row]
         for affected_row in affected:
             affected_row["status"] = "interrupted" if isinstance(error, KeyboardInterrupt) else "failed"
             affected_row["result"] = None
@@ -501,15 +546,33 @@ def measure_session(plan, config, repeat, artifacts, pairs, log_dir, label, appr
                 affected_row["error"] = {"stage": stage, "type": type(error).__name__, "message": str(error),
                                          "completed_items": 0}
     finally:
+        try:
+            checked_session_integrity(config, artifacts, sources)
+        except (Exception, KeyboardInterrupt) as error:
+            integrity_error = {"type": type(error).__name__, "message": str(error)}
+            integrity_stop = "post-run integrity check failed; abort matrix"
+            for item in rows:
+                completed_items = item["result"]["total"] if item["result"] else 0
+                item["post_run_integrity"] = {"status": "failed", "error": dict(integrity_error)}
+                item["result"] = None
+                if item["status"] == "ok":
+                    item["status"] = "failed"
+                if item["error"] is None:
+                    item["error"] = {"stage": "integrity_after_run", **integrity_error,
+                                     "completed_items": completed_items}
+        else:
+            for item in rows:
+                item["post_run_integrity"] = {"status": "ok", "error": None}
         for item in rows:
             item["timing_s"]["session_total"] = time.monotonic() - started
             item["server_log"] = str(log_path)
             item["server_log_sha256"] = digest(log_path.read_bytes()) if log_path.exists() else None
-            item["stop_reason"] = reference_stop(plan, item)
+            item["stop_reason"] = integrity_stop or reference_stop(plan, item)
     return rows
 
 
-def run_experiment(plan, output_path, *, approval_note, evidence_label="MEASURED", calibration_only=False):
+def run_experiment(plan, output_path, *, approval_note, evidence_label="MEASURED", calibration_only=False,
+                   external_deadline=None):
     validate_plan(plan)
     if not approval_note or evidence_label not in ("MEASURED", "SIMULATED"):
         raise ValueError("approval reference and explicit evidence label are required")
@@ -521,7 +584,15 @@ def run_experiment(plan, output_path, *, approval_note, evidence_label="MEASURED
     if evidence_label == "MEASURED" and "UNRESOLVED" in canonical(plan).upper():
         raise ValueError("resolve artifact, license, and hardware placeholders before measured execution")
     started = time.monotonic()
+    if external_deadline is not None:
+        if (isinstance(external_deadline, bool) or not isinstance(external_deadline, (int, float))
+                or not math.isfinite(external_deadline)):
+            raise ValueError("external_deadline must be a finite monotonic timestamp")
+        if external_deadline <= started:
+            raise TimeoutError("external study deadline already passed")
     deadline = started + plan["experiment_timeout_s"]
+    if external_deadline is not None:
+        deadline = min(deadline, external_deadline)
     artifacts = {name: checked_artifact(plan[name]["path"], plan[name]["sha256"])
                  for name in ("model", "evalset")}
     for config in plan["configurations"]:

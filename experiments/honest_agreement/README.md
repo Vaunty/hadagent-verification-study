@@ -1,6 +1,8 @@
 # P-005 honest-agreement experiment
 
-**Status: the first real reference calibration failed at its frozen runtime limit.** At commit `74a87ea`, it completed 50 of 100 prompts before a scoring timeout at 600.031 seconds (MEASURED). The server stopped; the reference was not retried, and neither experiment matrix ran. No HadAgent-rule score or agreement estimate was finalized. See the [research log](../../docs/RESEARCH_LOG.md) and `local/results/calibration.failure-summary.json`. The candidate table and example JSON below remain reusable templates; the dated manifest records the artifacts actually verified and used.
+**Status: the first reference calibration stopped at our harness's predeclared 600-second session limit, which we had set without a throughput measurement.** At commit `74a87ea`, it completed 50 of 100 items in 600.031 seconds (MEASURED, independently CONFIRMED by OpenCode). No HadAgent-rule score was produced; per-item outputs were not recorded, so no partial score exists or can be computed from the retained artifacts. The server stopped, the matrix was not started, and nothing was retried or tuned. See the [research log](../../docs/RESEARCH_LOG.md) and `local/results/calibration.failure-summary.json`.
+
+The timing-only amendment is [P005b_PROPOSAL.md](P005b_PROPOSAL.md), awaiting consensus. The separate P-008 desktop package is prepared with `build_desktop_bundle.py`; its [runbook](desktop/DESKTOP_RUNBOOK.md) explicitly blocks execution until the RED gates and missing portable-runtime pin are resolved. No desktop download, transfer, or inference is part of packaging. The original plan/example below is historical; it is not silently replaced by the proposed amendment.
 
 This experiment asks whether nominally deterministic llama.cpp evaluations produce the same completion bytes and the same HadAgent-rule score under a fixed model, eval set, decode configuration, and selected runtime settings. It has two deliberately separate modes:
 

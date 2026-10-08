@@ -64,3 +64,5 @@ legacy/
 # Local P-005 binaries, models, eval sets, logs, and experiment output
 /tools/
 /experiments/honest_agreement/local/
+/experiments/honest_agreement/desktop_bundle/
+/experiments/honest_agreement/desktop_bundle.zip

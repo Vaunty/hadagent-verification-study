@@ -359,11 +359,17 @@ $env:PYTHONPATH='hadagent/src'
 .venv\Scripts\python -m experiments.honest_agreement.run --config experiments/honest_agreement/local/plan.calibration.json --output experiments/honest_agreement/local/results/calibration.jsonl --execute --calibrate --approval-note 'P-005: matthew.md 16:38; claude.md out-of-band confirmation 2026-10-08 18:05' 2>&1 | Tee-Object -FilePath 'test_results/astra-p005/calibration-74a87ea.txt'
 ```
 
-The predeclared one-thread CPU reference **failed** with `TimeoutError` in
-scoring after **50 of 100 completed items**, at **600.031 seconds** for the
+The predeclared one-thread CPU reference **failed** at our harness's fixed
+600-second session limit, which we had set without a throughput measurement.
+It reported `TimeoutError` in scoring after **50 of 100 completed items**, at
+**600.031 seconds** for the
 session. The command exited 1; the owned server process was confirmed gone.
 There is no finalized HadAgent-rule score, matched non-bare-letter count, or
-agreement statistic. Partial completions were not recast as a benchmark score.
+agreement statistic. Per-item outputs were not recorded, so no partial score
+exists or can be computed from the retained evidence. This was our planning
+error, not a demonstrated model or HadAgent failure. The timing/count evidence
+is MEASURED and was independently CONFIRMED by OpenCode on 2026-10-08;
+OpenCode's review also confirmed the frozen hashes and absence of any score.
 The reference was not retried, the timeout was not extended, and neither the
 planned matrix nor the separate idle/load condition was started. Vulkan
 inference was unattempted; it is not being labeled a failed Vulkan cell.
@@ -394,3 +400,37 @@ honest-node agreement or false-positive estimate**, and makes no comparison to
 the paper's tampering-detection result. A longer run would require a distinct,
 explicitly reviewed plan revision; the failed pilot remains part of the record.
 No `hadagent/src` edit, system change, merge, or push occurred.
+
+## 2026-10-08: P-005b proposal and offline P-008 desktop preparation
+
+Posted P-005b as an AMBER timing-only amendment. Its SIMULATED/planned design
+uses an 1,800-second session limit, six fixed cells with one repeat each, a
+separate idle/load calibration and pair, and one persistent six-hour budget
+that charges the failed pilot once. The reference, model/eval/template,
+DecodeConfig and score gate remain fixed. No new model evaluation occurred.
+The full reasoning, fixed cuts, caps and cross-machine comparison are in
+`experiments/honest_agreement/P005b_PROPOSAL.md`; execution awaits consensus
+and OpenCode's controller check.
+
+Prepared a private desktop review bundle with the existing model/eval data,
+relocated historical plan, proposed desktop/laptop plans, original prototype
+source, portable harness, vendored dependency inventory, artifact pins,
+strict manifest verifier, guarded preparation tools and PowerShell runbook.
+The desktop adds a separately analyzed FP16 GGUF condition, not BF16. It pins
+one RTX 3060 device per GPU build and makes no data-center generalization.
+
+All preparation is GREEN and local. The official embeddable Python archive and
+publisher digest are absent locally, so that pin stays explicitly unresolved;
+no installer or guessed checksum is substituted. The remaining desktop
+artifacts are pinned from saved official metadata and downloaded only after
+P-008 approval. No network, transfer, inference or dependency installation was
+performed during this work. P-008 also waits for the exact desktop specs,
+P-005b decision, independent bundle review, and Matthew's recorded out-of-band
+confirmation. Local private paths/logs are excluded from return copies.
+
+The harness now checks artifact/source integrity on failure as well as success.
+Synthetic tests cover the persistent deadline across processes, consumed
+failed stages, final-write overruns, the fixed missing-cell order, device
+selection, archive safety, manifest tampering and returned plan binding. These
+are software checks, not model-agreement evidence. Exact test output, commit,
+bundle manifest hash and ZIP hash are recorded in Astra's coordination outbox.
