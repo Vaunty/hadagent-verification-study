@@ -67,3 +67,7 @@ legacy/
 /experiments/honest_agreement/local/
 /experiments/honest_agreement/desktop_bundle/
 /experiments/honest_agreement/desktop_bundle.zip
+
+# Local P010 measurements and benchmark material (never publish implicitly)
+/experiments/local_redteam/local/
+/hadagent/data/evalset/evalset.jsonl
