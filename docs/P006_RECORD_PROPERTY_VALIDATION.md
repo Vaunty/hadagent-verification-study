@@ -41,4 +41,18 @@ Run locally on 2026-10-11 from branch `astra/record-properties-20261011`, based 
 - Full-suite log: `test_results/astra-p006/full_suite.txt`; SHA-256 `26F3FFB177A51F239AFF25AA072B6EAE00F5A6C5E41CE2E1C0F82459DE0E3C57`.
 - Existing full-suite metrics artifact copied to `test_results/astra-p006/full_suite_validation_metrics.json`; SHA-256 `B15594FAC3087768D02105789C967CF4014070F462A5B9ACD141D7C973544074`.
 
-No unexpected failure appeared in the real record or block validator, so there is no candidate new finding from this run. These results are pending root review, a committed source revision, OpenCode's clean-checkout rerun, and reviewer wording approval before any ledger, paper, or application claim.
+No unexpected failure appeared in the real record or block validator, so there is no candidate new finding from this run. Root subsequently reviewed the full test source and committed it as `279eeb0e2d50237a02d70298117db12c07ab23cb`. The following independent native-agent check supplements that review. The designated OpenCode rerun and reviewer wording approval remain pending before promotion into the findings ledger, paper, or application claims.
+
+## Independent native-agent reproduction
+
+A separate Codex agent reviewed and reran commit `279eeb0e2d50237a02d70298117db12c07ab23cb` in the clean detached worktree `RedTeamHarness-verify-p006-20261011`, with that worktree's own `hadagent/src` on `PYTHONPATH`. This is an independent AI check, not a message or approval from the project's designated OpenCode/reviewer roles.
+
+- **MEASURED targeted result:** seven tests passed in 4.65 seconds; each completed 64 passing examples with zero failing examples.
+- **MEASURED full-suite result:** 178 tests passed in 15.18 seconds.
+- The tracked checkout was clean before and after. Import locations matched the verification worktree. HadAgent and `core` trees were unchanged from the parent commit.
+- Test Git blob: `49004b8947b7bb97a464e9aac3cb417dfb3c0543`. The canonical committed-blob SHA-256 matches the value above; the Windows CRLF checkout has a different file hash but the same Git clean-filter identity.
+- Independent targeted log SHA-256: `E59A71F3D592BB1235FD9620F4D3D2AB38EA16859A2CF6BBEB72B71227B2DBFE`.
+- Independent full-suite log SHA-256: `CE07EC587CE5DC5E3B5BACBC0B53559A246EF0130B3BB564635664F1718B188D`.
+- Independent environment/provenance log SHA-256: `15CE4318B2FD417233E4C60A94F129879F533FA7B00370D48029BC4AFBA9A739`.
+
+The detailed report and raw logs are retained under `School_Work/Boyang_Survey/CRA_2026/Proposed_Revisions_2026-10-10/review_1000/`: `P006_INDEPENDENT_CHECK_2026-10-11.md` and `p006_independent_logs_2026-10-11/`. All generated inputs remain **SIMULATED**. No new finding, real-model measurement, or security guarantee follows. The suite was implemented by an AI agent on October 11 under Matthew's instruction; this does not establish that Matthew personally authored it or ran it before that date.
