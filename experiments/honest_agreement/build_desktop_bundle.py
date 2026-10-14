@@ -204,7 +204,9 @@ def build(destination, runtime_lock=None):
     for p in destination.rglob('*'):
         if p.is_file() and p.suffix in ('.json', '.jsonl', '.md', '.txt', '.ps1', '.py'):
             content = p.read_text(encoding='utf-8', errors='replace').lower()
-            if 'c:\\users\\matth' in content or 'c:/users/matth' in content:
+            if re.search(r'[a-z]:[\\/]+users[\\/]+', content, re.IGNORECASE) or re.search(
+                r'/home/[^/\s]+', content, re.IGNORECASE
+            ):
                 raise ValueError('personal profile path in bundle: ' + p.relative_to(destination).as_posix())
     files = {p.relative_to(destination).as_posix(): {'sha256': sha(p), 'size': p.stat().st_size}
              for p in sorted(destination.rglob('*')) if p.is_file()}

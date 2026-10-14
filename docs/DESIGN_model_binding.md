@@ -1,85 +1,42 @@
-# Design note: binding served outputs to the audited model
+# Design note: binding a result to a model and to work
 
-Matthew K. Ngoy. Mentor: Boyang Li. Kean University, Fall 2026.
+Matthew Ngoy, with faculty mentorship from Boyang Li, Kean University, Fall 2026.
 
-This note covers the model-substitution attack and the question it raises:
-how do you prove that the output a node served came from the model it
-committed on-chain? It is the "short design write-up on binding served
-outputs to the audited model" listed in the proposal.
+This note asks what an accepted inference claim means. The HadAgent paper names a model artifact, input, and decoding configuration and describes independent master-node recomputation. The copied prototype signs those fields but verifies the score by querying the proof submitter's endpoint. P010 shows that this local path can accept known correct answers when the named model never runs.
 
-## The gap in the prototype
+That observation supports an implementation-to-design gap. It does not establish that the full paper design accepts the same strategy, and it does not make every functionally equivalent implementation malicious. A protocol must state which relation it intends to reward.
 
-In `hadagent/src/podl_chain/pdl.py`, `verify_podl_llm_eval` takes the
-endpoint URL out of the miner's own proof record and POSTs the eval
-prompts there. The record also carries `artifact_hash`, meant to identify
-the committed weights. Nothing in the code checks that the model answering
-at that endpoint is the model the hash names. The verifier trusts whatever
-responds.
+## Three different bindings
 
-So a node can commit model A, answer audits from A, and serve model B to
-real users. Consensus cannot tell, because score reproduction is all it
-checks.
+**Claim binding** authenticates what a participant asserted. A signature can bind the signer to a model ID, artifact hash, endpoint, decode hash, score, and timestamp. The copied records provide this property.
 
-## The attack (two forms)
+**Artifact/result binding** establishes that a result agrees with execution of the artifact named by the claim under the fixed input and configuration. An honest verifier that retrieves the artifact and recomputes the task can check functional equivalence. The copied endpoint verifier does not do that.
 
-**Lookup table (no model).** The evalset is public and its hash is in the
-record. The node precomputes answers once and serves them from a
-dictionary, passing the audit with no model running. `runners/model_binding.py`
-sketches this today but grades the table against the file it was built
-from, so it is not yet a real demonstration.
+**Work and freshness binding** establishes that the rewarded participant performed the required computation for this challenge, after commitment, rather than returning a cache, replay, proxy result, or outsourced answer. Output equality and deterministic recomputation do not prove this physical history by themselves.
 
-**Two-model swap (the safety-relevant form).** The node commits an aligned
-model and serves an unaligned one.
-- Committed / audited: Llama-3.2-3B Instruct (aligned). Answers the audit path.
-- Served: an uncensored variant, or the same model with the safety system
-  prompt stripped. Answers real user requests.
-Both score about the same on MMLU, so the audit passes. The served model
-complies with harmful requests the committed one refuses. Jailbreak prompts
-and a HarmBench subset are used here to measure the compliance gap between
-the two models, on a node that passes 100% of audits.
+The P012 arithmetic repair addresses none of these identity questions. It places the computed score and threshold in the same fixed units. The all-correct lookup control still passes both arms, as it should under a score-only predicate.
 
-## Can this be closed by "cryptographically proving" the model?
+## What P010 establishes
 
-There is no cheap, fully sound way today to prove "this output came from
-these exact weights." The options, strongest to cheapest:
+The P010 block used mutually agreeing signed MODEL and PROOF metadata, real signatures and lane roots, and actual loopback HTTP. A dictionary participant returned the frozen benchmark's known answers without loading the named Qwen model. The unchanged local `Block.validate` path accepted the block, and the isolated score-unit repair accepted the same endpoint responses.
 
-1. **zkML (zero-knowledge proof of inference).** Prove y = f(x, W) with
-   commit(W) equal to the on-chain hash, revealing nothing else. The real
-   cryptographic answer (tools such as EZKL). Cost is the blocker: proving
-   a full forward pass of a 3B-7B transformer is currently far too
-   expensive for serving latency. The cost itself is a finding, tied to the
-   verifier's-dilemma and proof-of-learning cost results already cited.
+This is an existence result for a fixed, known benchmark and copied local validator. It is stronger than a mocked return value because it crosses the serialized block and HTTP boundary. It does not test a hidden or post-commit challenge, a second real model, master voting, network consensus, rewards, or arbitrary user requests.
 
-2. **TEE remote attestation.** Run inference inside an enclave (Intel TDX,
-   NVIDIA H100 confidential computing). The hardware attests that it loaded
-   hash h and produced y. Deployable today. It is a hardware root of trust,
-   not pure cryptography: trusts the chip vendor, and side channels exist.
+## Candidate mechanisms
 
-3. **Weight commitment plus challenge-opening.** Commit a Merkle root over
-   the weights; on audit, reveal random weight slices with Merkle proofs.
-   Proves the node possesses the committed weights. Does not prove it used
-   them for any given output.
+No single mechanism below automatically proves every property.
 
-4. **Fingerprinting / rotating challenges.** Secret probe set the committed
-   model answers in known ways; a substituted model fails the probes.
-   Detection, not proof. Probabilistic and evadable if the adversary can
-   separate probe traffic from real traffic. This is the "hidden rotating
-   challenges" defense in the proposal.
+1. **Verifier-controlled recomputation.** Retrieve the committed artifact by content hash and execute the same fixed task independently. This checks functional agreement with the named artifact. Its verification cost can approach the cost of the inference being verified, and it does not prove which party originally performed the work.
+2. **Fresh post-commit challenges.** Bind an unpredictable verifier challenge or block context to the proof after the participant commits. This limits precomputation and replay when the challenge space is large enough. It needs a formal timing, sampling, and soundness argument.
+3. **Cryptographic proofs of inference.** Prove a computation relation tied to committed weights and inputs. This can give strong functional guarantees, but proof generation and verification costs must be measured for the target model and deployment.
+4. **Trusted execution with remote attestation.** Bind code and model measurements to an attested execution environment. This introduces hardware, vendor, firmware, key-management, and side-channel assumptions.
+5. **Model fingerprinting or rotating probes.** Use probes selected to distinguish the committed model from candidate substitutes. This is probabilistic detection, not cryptographic proof, and can fail when an adversary recognizes probes or a substitute is functionally equivalent.
+6. **Possession checks.** Challenge openings against a weight commitment to show access to parts of an artifact. Possession alone does not prove that the artifact produced a particular result.
 
-## What this project builds vs. writes up
+## Next defensible experiment
 
-- **Build:** the fingerprint / rotating-challenge detector (rung 4). Cheap,
-  real, measurable. Report substitution success rate before and after, as a
-  function of how well the adversary separates probe traffic from real
-  traffic. Also add the safety judge to the verification path so it inspects
-  the served output, not just the score, and measure harmful-compliance
-  before and after.
-- **Write up (design only):** the cryptographic binding (rungs 1-3), with
-  honest cost characterizations. zkML is sound but too expensive at serving
-  latency; TEE attestation is the deployable middle; commitment-opening
-  proves possession but not use.
+A stronger study would first formalize whether the system promises output correctness, named-model equivalence, fresh participant work, or all three. It would then use a verifier-controlled committed artifact, a post-commit held-out challenge, an eligible honest baseline, and at least one real substitute plus cache/lookup control. Raw output equality, aggregate score equality, eligibility, participant cost, verifier cost, and decision should be reported separately.
 
-Honest limitation to state plainly: the safety judge catches unsafe
-outputs, fingerprinting catches substitution probabilistically, and true
-cryptographic binding needs zkML or a TEE whose cost is the open problem
-this line of work runs into.
+Testing consensus requires the actual master voting and finalization path. Until that implementation is available, results should say “accepted by the copied local validator” rather than “accepted by HadAgent consensus.”
+
+See [P010 results](P010_LOCAL_REDTEAM_RESULTS.md), [P012 results](P012_SCORE_SCALE_GRID_RESULTS.md), and [Scope and claims](SCOPE_AND_CLAIMS.md) for the completed evidence and limits.

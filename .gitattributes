@@ -1,0 +1,3 @@
+# Matplotlib emits editable SVG path data with significant-looking line ends.
+# Treat generated figures as binary for Git diffs while preserving SVG text.
+docs/assets/*.svg -diff

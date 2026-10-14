@@ -1,0 +1,45 @@
+{
+  "generated_from": "Saved primary reports; aggregates re-counted 2026-10-14; no new inference run.",
+  "p012": {
+    "commit": "9de5ac566676670fb57165803d0d2387bd73e1af",
+    "report_sha256": "a8c567e70bd525b4034055a8bcf945b25d80bc6313ff22e79eb2b89341559d52",
+    "inflation": {
+      "cases": 78,
+      "original_accepted": 70,
+      "repair_accepted": 0
+    },
+    "canonical_controls": {
+      "cases": 32,
+      "original_accepted": 6,
+      "repair_accepted": 6
+    },
+    "eligible_synthetic_controls": {
+      "cases": 6,
+      "original_accepted": 6,
+      "repair_accepted": 6
+    },
+    "known_answer_lookup": {
+      "cases": 1,
+      "original_accepted": 1,
+      "repair_accepted": 1
+    },
+    "boundary": "Synthetic participants and signed inputs; measured copied local validator decisions. Exhaustive finite grid, not a population estimate. Lookup is one of the eligible controls, not an extra cohort."
+  },
+  "p013": {
+    "commit": "47c742722441779cae6d7a10a7950219d8708818",
+    "report_sha256": "5d240eac0061225410e21567f0efa9b50be561776dd91602b46019dcbd1939d1",
+    "claim_matches": 28,
+    "claim_total": 100,
+    "claim_score": 2800,
+    "validation_matches": 28,
+    "validation_score": 2800,
+    "threshold": 8000,
+    "score_scale": 10000,
+    "total_requests": 200,
+    "paired_identical_texts": 100,
+    "paired_items": 100,
+    "eligible_honest_trials": 0,
+    "validation_accepted": false,
+    "boundary": "One paired local run with Qwen2.5-1.5B-Instruct Q4_K_M on CPU llama.cpp b11514. Normalized-prefix scorer, not standard MMLU accuracy. False-rejection rate undefined. Independent AI artifact audit, not independent model rerun."
+  }
+}

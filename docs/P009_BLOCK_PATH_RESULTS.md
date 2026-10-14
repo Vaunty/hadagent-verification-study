@@ -34,12 +34,12 @@ Test Git blob `19b1c184852225bd12db837f8ae219218718e4d4`; canonical SHA-256 `FCF
 
 ## Preserved evidence
 
-- First targeted log: `C:\Users\matth\OneDrive\Desktop\RedTeamHarness-block-path-20261011\test_results\astra-p009\targeted.txt`; SHA-256 `fcf98e75de1f06052cb890b356b97d346e48372756a4c1bf3a43ff80569bf134`.
-- First full-suite log: `C:\Users\matth\OneDrive\Desktop\RedTeamHarness-block-path-20261011\test_results\astra-p009\full_suite.txt`; SHA-256 `aaebe72fcb701881336050422f386c7b37c94e9c6eee3bad7af27d8be230355b`.
-- First execution record: `C:\Users\matth\OneDrive\Desktop\RedTeamHarness-block-path-20261011\test_results\astra-p009\execution.json`; SHA-256 `a5d042496d78f7fe640f5471f89b32972d7dcc4e9ac8818a17034d7520e0789a`.
-- Independent targeted log: `C:\Users\matth\OneDrive\Desktop\School_Work\Boyang_Survey\CRA_2026\Proposed_Revisions_2026-10-10\review_1000\P009_INDEPENDENT_LOGS_2026-10-11\targeted_pytest.log`; SHA-256 `bf82bf0f09edaff58ab15e121247dccbf5f22deb0c48ea5e7e53258516c5e2da`.
-- Independent full-suite log: `C:\Users\matth\OneDrive\Desktop\School_Work\Boyang_Survey\CRA_2026\Proposed_Revisions_2026-10-10\review_1000\P009_INDEPENDENT_LOGS_2026-10-11\full_pytest.log`; SHA-256 `4fe499f1a4f5dfa6cbce13a238b13fdabd8fc8cc536d063587f1ad731973811c`.
-- Independent report: `C:\Users\matth\OneDrive\Desktop\School_Work\Boyang_Survey\CRA_2026\Proposed_Revisions_2026-10-10\review_1000\P009_INDEPENDENT_CHECK_2026-10-11.md`; SHA-256 `2e94e5638c6b58592b143a844787d04016ed46e344b74c210e8728a61e223688`.
+- First targeted log: ignored local artifact `test_results/astra-p009/targeted.txt`; SHA-256 `fcf98e75de1f06052cb890b356b97d346e48372756a4c1bf3a43ff80569bf134`.
+- First full-suite log: ignored local artifact `test_results/astra-p009/full_suite.txt`; SHA-256 `aaebe72fcb701881336050422f386c7b37c94e9c6eee3bad7af27d8be230355b`.
+- First execution record: ignored local artifact `test_results/astra-p009/execution.json`; SHA-256 `a5d042496d78f7fe640f5471f89b32972d7dcc4e9ac8818a17034d7520e0789a`.
+- Independent targeted log: private verification archive `P009_INDEPENDENT_LOGS_2026-10-11/targeted_pytest.log`; SHA-256 `bf82bf0f09edaff58ab15e121247dccbf5f22deb0c48ea5e7e53258516c5e2da`.
+- Independent full-suite log: private verification archive `P009_INDEPENDENT_LOGS_2026-10-11/full_pytest.log`; SHA-256 `4fe499f1a4f5dfa6cbce13a238b13fdabd8fc8cc536d063587f1ad731973811c`.
+- Independent report: private verification archive `P009_INDEPENDENT_CHECK_2026-10-11.md`; SHA-256 `2e94e5638c6b58592b143a844787d04016ed46e344b74c210e8728a61e223688`.
 
 ## Limits and attribution
 

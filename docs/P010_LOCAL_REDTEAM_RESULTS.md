@@ -34,7 +34,7 @@ The original P005 600-second failed calibration remains a separate failed experi
 First command, from this worktree:
 
 ```text
-C:\Users\matth\OneDrive\Desktop\RedTeamHarness\.venv\Scripts\python.exe -X utf8 experiments\local_redteam\run.py run --plan experiments\local_redteam\plan.json --output experiments\local_redteam\local\attempt-01
+.venv\Scripts\python.exe -X utf8 experiments\local_redteam\run.py run --plan experiments\local_redteam\plan.json --output experiments\local_redteam\local\attempt-01
 ```
 
 Independent execution used a clean detached worktree at the identical commit and appended `--adversarial-only`. Its output is `RedTeamHarness-verify-p010-20261011/experiments/local_redteam/local/independent-attempt-01`. Both processes exited 0. Source and artifact hashes remained stable, the owned evaluation fixture was removed, and both worktrees were clean at experiment completion. Port-specific signed bytes are recorded separately; different dynamic ports mean no cross-run byte-identity claim.

@@ -78,8 +78,8 @@ From the worktree, with its own `hadagent/src` on `PYTHONPATH` and the existing 
 
 ```powershell
 $env:PYTHONPATH=(Resolve-Path 'hadagent/src').Path
-& 'C:\Users\matth\OneDrive\Desktop\RedTeamHarness\.venv\Scripts\python.exe' -m pytest -q -s hadagent/tests/test_podl_block_path.py
-& 'C:\Users\matth\OneDrive\Desktop\RedTeamHarness\.venv\Scripts\python.exe' -m pytest -q
+& '.venv\Scripts\python.exe' -m pytest -q -s hadagent/tests/test_podl_block_path.py
+& '.venv\Scripts\python.exe' -m pytest -q
 ```
 
 Preserve the exact commit, test hash, commands, raw output, exit codes, environment versions, and full-suite output. Designated protocol roles must independently rerun and review wording before any result enters a ledger, paper, or application. Native parallel reviews are supplementary and are not designated OpenCode/reviewer votes.

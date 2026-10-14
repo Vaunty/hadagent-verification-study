@@ -97,7 +97,7 @@ def comparison_report(baseline_run_id, defended_run_id, out="results/comparison.
 
 
 def poi_report(run_id=None, out="results/poi_report.md"):
-    """Generate a Markdown report for a Proof-of-Inference red-team run."""
+    """Generate a Markdown report for an older synthetic PoI runner."""
     from core.database import get_runs, get_run_metrics
 
     if not run_id:
@@ -113,7 +113,8 @@ def poi_report(run_id=None, out="results/poi_report.md"):
     rows = [[k, v] for k, v in sorted(metric_map.items())]
 
     parts = [
-        "# HadAgent Proof-of-Inference Red-Team Report\n",
+        "# Synthetic Proof-of-Inference Demonstration Report\n",
+        "- Scope: fixture-based project simulation; not a deployed HadAgent result",
         f"- Run ID: `{run_id}`",
         f"- Total Metrics Tracked: **{len(rows)}**\n",
         "## Summary Metrics\n",

@@ -1,0 +1,52 @@
+{
+  "base_commit": "069f6cce89e75bad32b8e969f7e3fe85dae6194e",
+  "cohorts": {
+    "canonical_controls": {
+      "candidate_count": 32,
+      "masks": "all integers 0 through 31; bit i controls synthetic item i",
+      "score_scales": [10000],
+      "threshold_eligible_correct_counts": [4, 5],
+      "threshold_eligible_patterns": 6,
+      "threshold_ineligible_patterns": 26
+    },
+    "inflation_attempts": {
+      "candidate_count": 78,
+      "correct_counts": [0, 1, 2, 3],
+      "masks": "the 26 canonical patterns below four correct items",
+      "score_scales": [20000, 40000, 1000000]
+    }
+  },
+  "decode_config": {
+    "max_tokens": 64,
+    "stop": null,
+    "temperature": 0.0,
+    "top_k": 1,
+    "top_p": 1.0
+  },
+  "evidence_labels": {
+    "responses_and_signed_fixtures": "SIMULATED",
+    "validator_decisions_after_execution": "MEASURED"
+  },
+  "expected_finite_counts": {
+    "canonical_eligible_false_rejects_repaired": 0,
+    "canonical_original_accepts": 6,
+    "canonical_repaired_accepts": 6,
+    "decisions": 220,
+    "http_requests": 1100,
+    "inflation_original_accept_repaired_reject": 70,
+    "inflation_original_accepts": 70,
+    "inflation_repaired_accepts": 0,
+    "paired_candidates": 110
+  },
+  "fixture_items": 5,
+  "oracle": {
+    "canonical_score": "floor(correct * 10000 / 5)",
+    "claim": "floor(correct * candidate_score_scale / 5)",
+    "original_accept": "claim >= 8000 because original recomputes in candidate_score_scale units",
+    "repaired_accept": "claim == floor(correct * 10000 / 5) and correct * 10000 >= 8000 * 5"
+  },
+  "protocol_score_scale": 10000,
+  "required_min_score_scaled": 8000,
+  "status": "frozen design; do not execute before root review",
+  "study_boundary": "finite synthetic five-item grid through actual signed block validation and owned loopback HTTP; no model, mocks, inference, peer, ledger, consensus, reward, deployed system, or general error-rate estimate"
+}

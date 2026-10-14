@@ -5,6 +5,29 @@ Entries are reverse-chronological. Categories: [SETUP], [FEATURE], [CHANGE], [FI
 
 ---
 
+## 2026-10-14 — Public-review preparation
+
+### [CHANGE] Replace the project overview with the measured evidence boundary
+- Renamed the study in documentation to **HadAgent Verification Study** and
+  separated copied-prototype findings, real-model local measurements, synthetic
+  demonstrations, tests, and unsupported network-level claims.
+- Added a source-to-claim map comparing the copied endpoint verifier with the
+  paper's intended independent-master recomputation design.
+- Added four evidence figures and their audited aggregate data.
+
+### [FEATURE] Import the completed P012 and P013 studies
+- Added the final score-scale grid and honest-baseline runners,
+  preregistrations, tests, and result records from their frozen local branches.
+- Normalized tracked workstation paths to repository-relative locations while
+  retaining the historical plan digest in the P013 metadata.
+
+### [CHANGE] Clarify provenance and release constraints
+- Added `NOTICE.md` to record the absence of a repository-wide license, the
+  unverified exact HadAgent source revision, the DebateCoach judge lineage, and
+  AI contributions.
+- Defanged the old trust-then-betray payload string and completed the documented
+  dependency set for the copied model utilities.
+
 ## 2026-09-14 — Honesty pass and repo cleanup
 
 ### [CHANGE] Label simulated results and verify findings against the source

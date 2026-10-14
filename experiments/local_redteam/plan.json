@@ -4,7 +4,7 @@
     "model":  {
                   "name":  "Qwen2.5-1.5B-Instruct-GGUF",
                   "filename":  "qwen2.5-1.5b-instruct-q4_k_m.gguf",
-                  "path":  "C:\\Users\\matth\\OneDrive\\Desktop\\RedTeamHarness\\experiments\\honest_agreement\\local\\models\\qwen2.5-1.5b-instruct-q4_k_m.gguf",
+                  "path":  "experiments/honest_agreement/local/models/qwen2.5-1.5b-instruct-q4_k_m.gguf",
                   "candidate_url":  "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf",
                   "revision":  "91cad51170dc346986eccefdc2dd33a9da36ead9",
                   "sha256":  "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
@@ -12,7 +12,7 @@
               },
     "evalset":  {
                     "name":  "MMLU fixed 100-item test subset",
-                    "path":  "C:\\Users\\matth\\OneDrive\\Desktop\\RedTeamHarness\\experiments\\honest_agreement\\local\\evalsets\\mmlu-fixed-100.jsonl",
+                    "path":  "experiments/honest_agreement/local/evalsets/mmlu-fixed-100.jsonl",
                     "sha256":  "337118581a78bc8b083030e5c5642480f3d4401d69dc486728dddc83f3049a51",
                     "source":  "https://github.com/hendrycks/test/archive/4450500f923c49f1fb1dd3d99108a0bd9717b660.zip",
                     "revision":  "4450500f923c49f1fb1dd3d99108a0bd9717b660",
@@ -30,7 +30,7 @@
     "runtime":  {
                     "id":  "cpu-vA-t4-b512-u128",
                     "version":  "b11514",
-                    "binary":  "C:\\Users\\matth\\OneDrive\\Desktop\\RedTeamHarness\\tools\\llama.cpp\\b11514\\cpu\\llama-server.exe",
+                    "binary":  "tools/llama.cpp/b11514/cpu/llama-server.exe",
                     "candidate_url":  "https://github.com/ggml-org/llama.cpp/releases/download/b11514/llama-b11514-bin-win-cpu-x64.zip",
                     "release_asset_sha256":  "5a1d6ba1b414ab0234b12e29d911b3b8fe63051b4455215e184cf74870eac596",
                     "binary_sha256":  "b8c86a12a3b775bed73b0841cc4bdbb7a5640b75012a117484e2e677095d3610",

@@ -1,215 +1,117 @@
-# HadAgent Proof-of-Inference Red-Team Harness — Application Guide
+# Application guide
 
-> **A complete, step-by-step guide to installing, configuring, and executing red-team attacks against HadAgent's Proof-of-Inference (PoI) and Proof-of-Deep-Learning (PoDL) blockchain consensus.**
+This guide covers the repository's tests, synthetic demonstrations, and recorded local experiments. Those are different activities. Running the unit suite checks implementation behavior; it does not reproduce an experimental result. Running `runner.py` produces illustrative fixture-based output; it does not measure a model or the HadAgent network. The P010 and P013 workflows require pinned local assets that are deliberately excluded from Git.
 
----
+## Install
 
-## Table of Contents
-
-1. [Overview](#1-overview)
-2. [Prerequisites & Architecture](#2-prerequisites--architecture)
-3. [Installation](#3-installation)
-4. [The 5 Attack Scenarios](#4-the-5-attack-scenarios)
-5. [Running the Attacks](#5-running-the-attacks)
-6. [Testing & Invariant Verification](#6-testing--invariant-verification)
-7. [Database Schema & Metrics](#7-database-schema--metrics)
-8. [Generating Reports](#8-generating-reports)
-9. [Troubleshooting](#9-troubleshooting)
-10. [Ethical Use](#10-ethical-use)
-
----
-
-## 1. Overview
-
-The **HadAgent Proof-of-Inference Red-Team Harness** evaluates the security, economic, and consensus assumptions of decentralized AI blockchains (specifically HadAgent, arXiv:2604.18614).
-
-Rather than treating LLMs as isolated chatbots, this harness red-teams the mechanisms that bind AI model evaluations to blockchain consensus:
-- **Consensus Reproducibility:** Does deterministic reproducibility guarantee safety or correctness?
-- **Hardware Divergence:** How do quantization (Q4 vs FP16) and multi-threading affect consensus agreement?
-- **Optimistic Execution:** Can an adversarial node establish trust and deliver harmful outputs before verification?
-- **Model Binding:** Can miners evade evaluation compute using precomputed lookup tables or proxy models?
-- **Ledger Invariants:** Can schema validation bugs allow malformed or unauthorized records into blocks?
-
----
-
-## 2. Prerequisites & Architecture
-
-| Requirement | Version | Notes |
-|---|---|---|
-| **Python** | 3.10+ | Tested with Python 3.14 on Windows |
-| **PyNaCl** | >=1.5 | Ed25519 asymmetric cryptography |
-| **msgpack** | >=1.0 | Canonical binary serialization for HadAgent records |
-| **pytest & pytest-asyncio** | Latest | Unit testing for async hub/pool & consensus |
-| **Hypothesis** | >=6.0 | Planned: property-based fuzzing for record/block invariants (current fuzzer is hand-written) |
-| **OpenAI API Key** | Optional | Required only when using GPT-4o as the Safety Judge oracle |
-
-### Repository Structure
-
-```
-RedTeamHarness/
-├── runner.py                 # Central CLI orchestrator for all attack suites
-├── runners/                  # Specialized attack runners
-│   ├── determinism.py        # Score divergence & hardware tolerance
-│   ├── trust_then_betray.py  # Optimistic serving exploitation & trust transitions
-│   ├── model_binding.py      # Lookup tables & model substitution
-│   ├── reproducibility.py    # Reproducibility != Safety invariant tests
-│   └── validation_fuzzing.py # Property-based fuzzing & tuple bug reproduction
-├── core/
-│   ├── poi/                  # Standalone HadAgent PoI consensus simulation
-│   │   ├── record.py         # 3-lane records, Ed25519 signing, tuple-bug switch
-│   │   ├── block.py          # Merkle-rooted per-lane blocks
-│   │   ├── trust.py          # Trust state manager (promote: 5, demote: 2)
-│   │   ├── anomaly.py        # Exact vs tolerance score anomaly detectors
-│   │   ├── serving.py        # Two-tier optimistic execution server
-│   │   └── node.py           # Simulated secondary node with adversarial behaviors
-│   ├── judge.py              # Ported DebateCoach judge (Correctness + Safety)
-│   ├── defenses.py           # In-path Safety Judge, Random Audit, Challenge defenses
-│   ├── database.py           # SQLite persistence (runs, records, divergences, transitions)
-│   └── targets.py            # PoINode model abstraction
-├── hadagent/                 # Official HadAgent codebase & benchmarks
-│   ├── src/podl_chain/       # Core blockchain consensus engine
-│   ├── tests/                # 26 native HadAgent consensus tests
-│   └── test_results/         # Baseline latency & validation metrics
-├── data/
-│   ├── evalset/              # Public benchmark questions (MMLU, HellaSwag)
-│   └── poi_attacks.jsonl     # Attack specifications across all 5 categories
-├── scripts/
-│   └── download_harmbench.py # Download & conversion script for held-out HarmBench data
-├── tests/                    # Unit test suite (12 tests)
-└── docs/
-    ├── APPLICATION_GUIDE.md  # This document
-    └── THREAT_MODEL.md       # PoI consensus threat model
-```
-
----
-
-## 3. Installation
+Use Python 3.10 or later from the repository root:
 
 ```powershell
-# 1. Activate virtual environment
-.venv\Scripts\activate
-
-# 2. Install dependencies
-pip install -r requirements.txt
-
-# 3. Set Python path for module resolution
-$env:PYTHONPATH = ".;hadagent/src;hadagent/tests"
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+python -m pip install -r requirements-dev.txt
 ```
 
----
+The copied prototype is not packaged as an installed distribution, so commands that import `podl_chain` need its source directory on `PYTHONPATH`:
 
-## 4. The 5 Attack Scenarios
-
-### Attack 1: Determinism & Score Divergence (`runners/determinism.py`)
-- **Vulnerability:** HadAgent's prototype anomaly detector requires exact integer equality (`claimed == verified`) on scaled scores. In reality, evaluating models across heterogeneous hardware, different GGUF quantizations (Q4_0 vs FP16), and varying thread counts introduces subtle numerical divergence.
-- **Impact:** Honest nodes are falsely flagged as anomalies. With simulated jitter the false-alarm rate is 60-72%; a real measurement is pending.
-- **Mitigation Tested:** A calibrated tolerance ($\pm 15$ points under the simulated jitter) removes the false anomalies. The real tolerance must come from measured divergence.
-
-### Attack 2: Trust-Then-Betray (`runners/trust_then_betray.py`)
-- **Vulnerability:** To reduce latency, HadAgent uses a two-tier serving system where "TRUSTED" nodes (5 clean rounds) deliver outputs optimistically *before* verification.
-- **Impact:** A malicious node acts honest for 5 rounds, earns trusted status, and then delivers harmful or deceptive outputs directly to consumer agents before the 2-failure demotion threshold isolates it.
-- **Mitigation Tested:** Probabilistic pre-delivery gating (`RandomAuditDefense`), bounding adversarial delivery to expected $1/p$ rounds.
-
-### Attack 3: Model-Binding & Lookup-Table Evasion (`runners/model_binding.py`)
-- **Vulnerability:** Consensus verification queries the miner's endpoint, but does not cryptographically bind the output tokens to the committed model weight hash (`artifact_hash`).
-- **Impact:** Attackers answer public audit sets (MMLU/HellaSwag) from a static precomputed lookup table (100% score with 0 compute) or substitute heavy models (Mistral-7B) with lightweight models (Llama-3.2-3B) during user serving. The ~65% compute-saving figure is a placeholder constant, not a measurement.
-- **Mitigation Tested:** Dynamic challenge auditing with private rotating evaluation queries (`RealRequestAuditDefense`).
-
-### Attack 4: Reproducibility vs Safety Invariant (`runners/reproducibility.py`)
-- **Vulnerability:** PoI checks only whether an evaluation score or output reproduces identically across nodes, not whether the output is safe.
-- **Impact:** At temperature 0, a fine-tuned or unaligned model producing harmful exploits deterministically reproduces across all nodes, passing consensus and earning block rewards. On the fixed illustrative set the baseline acceptance is 100% by construction.
-- **Mitigation Tested:** Adding an automated Safety Judge (`SafetyJudgeDefense`) to the block verification pipeline drops acceptance to 0% on that set. Requires a judge API key.
-
-### Attack 5: Validation Fuzzing (tuple bug) (`runners/validation_fuzzing.py`)
-- **Vulnerability:** A validation bug in the HadAgent repo history (commits `1a8d490` to `a4ec9da`): `validate_record` returned `(boolean, string)` while the caller tested `if not validate_record(r):`, and a non-empty tuple is always truthy, so `bool((False, "bad sig")) == True`.
-- **Impact:** Corrupt records and blocks with forged signatures were accepted into consensus.
-- **Verification:** Fuzzes records with bad signatures, out-of-bounds scores, and payload tampering, proving the fixed validator rejects 100% of corrupt inputs.
-
----
-
-## 5. Running the Attacks
-
-### Run All Attacks Sequentially
 ```powershell
+$env:PYTHONPATH = "hadagent/src"
+```
+
+No API key is needed for the test suite or local experiment runners. The optional OpenAI-backed safety judge in the older demonstration path reads `OPENAI_API_KEY` from a local `.env` file. Never commit that file.
+
+## Run the regression suite
+
+```powershell
+$env:PYTHONPATH = "hadagent/src"
+python -m pytest -q
+```
+
+The combined suite covers the copied record, block, ledger, pool, hub, and verifier code; the separate `core/poi` simulation; experiment orchestration; and evidence-integrity guards. Some experiment tests intentionally start loopback HTTP or TCP services. They do not contact external endpoints or run a language model.
+
+## Reproduce the P012 synthetic score-scale grid
+
+P012 is the smallest complete experiment that ships with all required fixtures. It enumerates five-answer response patterns across canonical and noncanonical score scales and evaluates the same signed candidate through the original and isolated-repair arms.
+
+Read the [preregistration](P012_SCORE_SCALE_GRID_PREREGISTRATION.md) and [result record](P012_SCORE_SCALE_GRID_RESULTS.md) first. Then run:
+
+```powershell
+$env:PYTHONPATH = "hadagent/src"
+python -m experiments.score_scale_grid.run `
+  --output experiments/score_scale_grid/local/attempt-01
+```
+
+The output directory is ignored. The participant serves constructed labels over loopback HTTP; no model executes. A successful run should be compared with the preregistered per-cell oracles, not summarized as an attack rate against deployed systems.
+
+## Inspect the P010 implementation boundary
+
+`experiments/local_redteam/` contains three related runners:
+
+- `run.py` tests a known-answer participant, negative controls, and an optional real-model reference.
+- `extensions.py` tests metadata consistency, proof reuse, endpoint response changes, and a changed challenge at the direct block-validation boundary.
+- `ledger_peer.py` extends those checks to the local file-backed ledger and loopback TCP hub.
+
+The corresponding records are [P010 results](P010_LOCAL_REDTEAM_RESULTS.md), [HTTP extension results](LOCAL_HTTP_EXTENSION_RESULTS.md), and [ledger/peer results](LOCAL_LEDGER_PEER_RESULTS.md). The tracked plan uses repository-relative paths, but the model, runtime, evaluation source, and private evidence directories are not bundled. Verify every recorded digest before running. Do not substitute a newer model or runtime and call it a reproduction.
+
+The adversarial-only portion uses a constructed known-answer participant. The optional reference uses the pinned local model. Neither path implements the paper's independent-master design, and a local ledger append is not network consensus.
+
+## Inspect the P013 honest baseline
+
+P013 starts a fresh local model server for a claim phase, freezes a signed block, starts another fresh server for validation, and compares the two phases. Its answer-blind proxy forwards request and response bytes without benchmark labels.
+
+Read the [preregistration](HONEST_BASELINE_PREREGISTRATION.md) and [result record](HONEST_BASELINE_RESULTS.md). The tracked plan records expected hashes and the portable asset layout; the large assets and completed evidence are excluded. A run requires the exact pinned files, sufficient memory, a clean worktree, and explicit execution flags enforced by the runner.
+
+The recorded block was truthfully below the eligibility threshold and was correctly rejected. Because there were no eligible honest acceptance trials, P013 does not estimate false rejection. Its two local phases also do not prove fresh prover-side computation or reproduce the paper's independent master-node verifier.
+
+## Review the P005 calibration harness
+
+`experiments/honest_agreement/` is a separately designed cross-configuration harness. Its one authorized calibration attempt did not finish the 100-item reference within the 600-second deadline. The full matrix was never run. See its [README](../experiments/honest_agreement/README.md) before using the dry-run interface.
+
+P013 later completed a different two-phase baseline. It does not retroactively turn P005 into a completed experiment.
+
+## Run the older synthetic demonstrations
+
+The top-level dispatcher exercises a separate simulation under `core/poi/`:
+
+```powershell
+$env:PYTHONPATH = "."
 python runner.py --attack all
 ```
 
-### Run Specific Attacks
-```powershell
-# 1. Determinism
-python runner.py --attack determinism
+Individual names are `determinism`, `trust-then-betray`, `model-binding`, `reproducibility`, and `validation-fuzzing`. These runners use constructed scores, outputs, trust transitions, or records. Their percentages and savings estimates are fixture properties unless a result document explicitly says otherwise. The trust, serving, anomaly, and defense classes in `core/poi/` are project simulations rather than copied HadAgent modules.
 
-# 2. Trust-Then-Betray (baseline vs defended)
-python runner.py --attack trust-then-betray
-python runner.py --attack trust-then-betray --defense
+The safety-judge variants can make external API calls when explicitly enabled and configured. They are not needed for the measured P012 or P013 findings.
 
-# 3. Model Binding
-python runner.py --attack model-binding
+## Reports and local artifacts
 
-# 4. Reproducibility vs Safety (baseline vs defended)
-python runner.py --attack reproducibility
-python runner.py --attack reproducibility --defense
+The legacy dispatcher can generate a Markdown report from its local SQLite data:
 
-# 5. Validation Fuzzing
-python runner.py --attack validation-fuzzing
-```
-
----
-
-## 6. Testing & Invariant Verification
-
-Run the entire combined test suite (38 passing tests):
-```powershell
-$env:PYTHONPATH = ".;hadagent/src;hadagent/tests"
-pytest tests/ hadagent/tests/ -v
-```
-
-- `tests/` (12 tests): Verifies PoI records, Ed25519 crypto, Merkle tree blocks, trust state transitions, anomaly detection modes, two-tier serving, and linear algebra geometry.
-- `hadagent/tests/` (26 tests): Verifies native HadAgent records, block linkage, hub networking, pool mempool operations, and scale submission.
-
----
-
-## 7. Database Schema & Metrics
-
-All runs are recorded in `results/harness.db` (SQLite with WAL mode and SHA-256 response hashing).
-
-Key tables:
-- `runs`: Run metadata, configuration, and timestamps.
-- `poi_records`: Verified PoI proof records, claimed/verified scores, anomaly flags, and safety verdicts.
-- `score_divergence`: Divergence deltas between execution configurations.
-- `trust_transitions`: Node trust lifecycle transitions (`UNTRUSTED` -> `TRUSTED` -> `DEMOTED`).
-- `run_metrics`: Aggregated statistical metrics per run.
-
----
-
-## 8. Generating Reports
-
-Generate an automated Markdown summary report for any run:
 ```powershell
 python report.py --poi
 ```
-The report is saved to `results/poi_report.md`.
 
----
+That report summarizes the older runner data. It does not aggregate P010, P012, or P013 evidence. The research experiments write structured JSON or JSONL into ignored `local/` or `test_results/` directories and record their artifact hashes in the corresponding result documents.
 
-## 9. Troubleshooting
+## Evidence interpretation
 
-### `ModuleNotFoundError: No module named 'core'` or `'podl_chain'`
-Ensure your `PYTHONPATH` includes both the repository root and HadAgent source:
-```powershell
-$env:PYTHONPATH = ".;hadagent/src;hadagent/tests"
-```
+Use these rules when quoting the repository:
 
-### Async tests failing
-Ensure `pytest-asyncio` is installed in your environment:
-```powershell
-pip install pytest-asyncio
-```
+1. Name the exact experiment and boundary.
+2. State whether inputs and participant behavior were synthetic or model-generated.
+3. Treat validator decisions as measured only when the result record says the path executed.
+4. Keep tests, requests, candidates, decisions, and independent trials as separate denominators.
+5. Describe AI reproductions and audits as AI work, not independent human validation.
+6. Do not generalize local loopback results to deployed consensus, rewards, prevalence, or current upstream code.
 
----
+The [scope and claims note](SCOPE_AND_CLAIMS.md) maps these boundaries to exact copied functions and to the HadAgent paper's intended verifier design.
 
-## 10. Ethical Use
+## Troubleshooting
 
-1. **Defensive Research Focus:** This harness is intended to identify architectural vulnerabilities in decentralized consensus protocols to enable stronger cryptographic binding and verification guardrails.
-2. **Responsible Disclosure:** Flaws discovered in consensus implementations should be shared with protocol maintainers before public deployment.
-3. **Local Evaluation:** All simulations and benchmarks are designed to run safely on local infrastructure.
+- **`ModuleNotFoundError: podl_chain`**: set `$env:PYTHONPATH = "hadagent/src"` from the repository root.
+- **Integrity guard reports a dirty tree**: commit or set aside unrelated tracked changes before running an evidence-producing experiment. Do not bypass the guard for a reported result.
+- **Missing model, eval set, or runtime**: the large pinned assets are intentionally absent. Obtain the exact recorded revision and verify its digest; do not silently replace it.
+- **Port already in use**: stop the conflicting local process or let a runner choose an available dynamic loopback port when supported.
+- **P005 example will not execute**: that is intentional. `plan.example.json` contains unresolved pins and is suitable only for structural dry runs.
+- **API error in a legacy defended run**: only that optional path needs an external judge key. The primary local validation studies do not.
+
+Use these tools only on systems and endpoints you own or are authorized to evaluate.

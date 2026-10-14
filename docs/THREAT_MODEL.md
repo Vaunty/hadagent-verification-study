@@ -1,75 +1,68 @@
-# Threat Model — HadAgent Proof-of-Inference (PoI) Red-Teaming Harness
+# Threat model for the HadAgent verification study
 
-**Author:** Matthew K. Ngoy  
-**Mentor:** Boyang Li (Kean University)  
-**Date:** Fall 2026  
-**Version:** 3.0 (Pivot from LLM/VLM Red-Teaming to HadAgent PoI Blockchain Consensus)  
+**Project lead:** Matthew Ngoy
 
----
+**Faculty mentor:** Boyang Li
 
-## 1. System Description
+**Updated:** October 14, 2026
 
-HadAgent is a decentralized AI serving blockchain that replaces energy-wasteful hash-based mining with **Proof-of-Inference (PoI)** / **Proof-of-Deep-Learning (PoDL)** consensus (arXiv:2604.18614). 
+This threat model separates the HadAgent paper's intended system, the copied `podl_chain` snapshot, and the project's independent `core/poi` simulation. The completed experiments measure selected local verification boundaries. They do not exercise a deployed chain or the complete agentic framework.
 
-### Key Consensus & Serving Mechanisms
-1. **Three-Lane AI Record Structure:**
-   - **DATA:** Commitments and cryptographic hashes of served input batches.
-   - **MODEL:** Commitments to model architectures, weights (`artifact_hash`), and version metadata (Mistral-7B-Instruct / Llama-3.2-3B).
-   - **PROOF:** Scaled integer evaluation scores (`claimed_score = int(accuracy * 1000)`) earned by evaluating models on public benchmark suites (MMLU, HellaSwag) under deterministic decoding (temperature 0, top-k 1).
-2. **Per-Lane Merkle-Rooted Blocks:**
-   - Blocks group verified records with independent Merkle roots per lane. Only cryptographic hashes, scores, and Ed25519 signatures are stored on-chain. Raw data and model weights remain off-chain.
-3. **Information Hub & Mempool:**
-   - Socket packet protocol (`NEW_DATA_RECORD`, `NEW_MODEL_RECORD`, `NEW_PROOF_RECORD`) passing through an AI record mempool (`pool.py`).
-4. **Two-Tier Optimistic Serving Architecture:**
-   - **Trusted Tier (Fast Path):** Nodes that establish trust (5 clean rounds) deliver inference results directly to the consumer/agent optimistically *before* validation completes.
-   - **Untrusted Tier (Held Path):** Nodes that have not yet achieved trust or have failed verifications have their outputs held until consensus verification succeeds.
-5. **Score Verification & Anomaly Detection:**
-   - Validators recompute model evaluations by querying the miner node's inference endpoint and comparing scores.
+## System and evidence boundaries
 
----
+The HadAgent paper proposes useful deterministic inference in place of hash-puzzle mining. It describes DATA, MODEL, and PROOF records; master and secondary nodes; independent recomputation and voting; a ledger; and an agent-serving harness with trust tiers. The design assumes fixed model weights, inputs, decoding settings, and retrievable content-addressed artifacts.
 
-## 2. Trust Boundaries
+The copied snapshot implements signed records, per-lane Merkle roots, block validation, a local file-backed ledger, a record pool, basic TCP packet transport, and an endpoint-based score check. Its verifier sends the local evaluation prompts to the endpoint named in the proof. The copied source does not include the paper's independent master-voting path, fork choice, rewards, or full trust/serving pipeline.
 
-1. **On-Chain vs Off-Chain Boundary:** The blockchain ledger stores only hashes, signatures, and scaled scores. Actual model execution and inference outputs occur off-chain on secondary nodes.
-2. **Optimistic Delivery Boundary:** Trusted nodes deliver outputs to consumer agents before consensus verification runs. This creates an execution time-window where unverified outputs are trusted.
-3. **Endpoint vs Model Commitment Boundary:** Consensus verifies the miner's *endpoint* responses (`verify_podl_llm_eval`), but does not cryptographically bind the output tokens to the committed model weight hash (`artifact_hash`).
-4. **Hardware Homogeneity Assumption:** The system assumes identical floating-point arithmetic across different GPU architectures, CPU backends, quantization variants, and thread counts.
+The separate `core/poi` package simulates trust transitions, optimistic serving, anomaly detection, and candidate defenses. Those components support controlled demonstrations; they are not measurements of the copied HadAgent code.
 
----
+## Protected properties
 
-## 3. Threat Actors
+The analysis keeps these properties distinct:
 
-- **Adversarial Secondary Node Operator:** An attacker operating one or more secondary inference nodes who seeks to earn block rewards with zero/reduced compute, manipulate consensus, or deliver malicious payloads to consumers.
-- **Model Provider / Fine-Tuner:** An adversary who trains or fine-tunes a model to pass public benchmarks while retaining harmful behaviors on real requests.
-- **Selfish Miner:** A miner exploiting hardware divergence to create consensus splits or force honest nodes into false-anomaly demotions.
+1. **Record integrity:** signed MODEL and PROOF assertions cannot be changed undetected.
+2. **Block integrity:** record validity, lane roots, linkage fields, and producer signature satisfy the local acceptance rules.
+3. **Score validity:** endpoint responses produce the claimed score under the declared scoring rule and units.
+4. **Artifact/result binding:** the accepted result agrees with execution of the named model artifact and fixed configuration.
+5. **Fresh work and attribution:** the rewarded participant performed the required computation for this challenge rather than replaying, caching, outsourcing, or proxying it.
+6. **Distributed agreement:** honest masters reach the intended vote/finality decision under network and Byzantine faults.
+7. **Serving safety:** consumer agents receive outputs only under the intended verification and trust policy.
 
----
+A signature supports integrity of an assertion; it does not prove that the assertion is true. A matching score supports one functional check; it does not establish a unique model or fresh physical work.
 
-## 4. Assets at Risk
+## Actors and capabilities
 
-1. **Consensus Correctness:** Ensuring that blocks included in the chain represent genuine model evaluation work.
-2. **Consumer Agent Safety:** Preventing adversarial inference nodes from delivering malicious, deceptive, or exploit payloads through the serving pipeline.
-3. **Resource Fairness:** Preventing attackers from evading evaluation compute costs (e.g. via lookup tables or cheap proxy models).
-4. **Consensus Liveness & Invariant Integrity:** Preventing invalid blocks from corrupting chain state (e.g., tuple validation bypass).
+- **Dishonest proof submitter:** can choose signed proof fields allowed by the schema, control the submitted endpoint, know a public evaluation set, cache answers, or serve a different implementation.
+- **Dishonest record submitter:** can submit individually valid MODEL and PROOF records with inconsistent metadata.
+- **Faulty or adversarial peer:** can replay records or blocks, reorder messages, or submit malformed packets. Network consensus behavior remains outside the current implementation and evidence.
+- **Honest but heterogeneous participant:** may use an allowed model/runtime environment whose outputs differ. The current evidence includes one paired CPU configuration, not a heterogeneous-hardware study.
+- **Dishonest serving node:** may behave well during a trust-building period and later return unsafe content. This is explored only in the separate synthetic simulation.
 
----
+## Evaluated cases
 
-## 5. Attack Surface & Threat Catalog
+| Case | Property tested | Completed evidence | Limits |
+|---|---|---|---|
+| Participant-controlled score units | Score validity | P012 original accepted 70/78 constructed below-threshold cases; isolated fixed-scale repair accepted 0/78 and retained 6/6 eligible synthetic controls | Finite synthetic grid; no model, consensus, or deployed impact |
+| Known-answer endpoint | Artifact/result and work binding | P010/P012 show the copied local score path can accept correct lookup answers without the named model running | Public known benchmark; does not test paper's independent masters or freshness challenge |
+| Honest repeated execution | Local functional agreement | P013 produced identical parsed text for 100/100 paired requests and score 2800 in both phases | One CPU configuration; block was truthfully ineligible, so false rejection is undefined |
+| Cross-record metadata mismatch | Record relationships | HTTP and ledger extensions accepted independently valid MODEL/PROOF metadata that disagreed | Source does not specify a one-to-one pairing rule; protocol violation is not assumed |
+| Replay and linkage | Local block/ledger integrity | Local append rejected wrong height/prior hash; a valid proof could be reused in a newly signed linked block | No peer consensus, voting, finality, or reward path |
+| Historical tuple handling | Record validation | Regression reproduces an already-fixed historical caller bug | Not a new finding from this study |
 
-| Threat | Description | Category | Impact | Status |
-| :--- | :--- | :--- | :--- | :--- |
-| **Determinism Divergence** | Honest nodes produce different scores across quantizations (Q4 vs FP16) or thread counts, triggering false anomaly detections (60-72% false alarm rate under exact match with simulated jitter). | Consensus Integrity | High | Simulated in `runners/determinism.py`; real-inference measurement pending |
-| **Trust-Then-Betray** | Malicious node earns 'TRUSTED' status over 5 clean rounds, then exploits optimistic delivery to serve unsafe outputs before demotion (2 failures). | Serving Safety | Critical | Simulated in `runners/trust_then_betray.py` |
-| **Lookup-Table Evasion** | Miner answers static public benchmark questions (MMLU/HellaSwag) from a precomputed table, achieving 100% score with 0 compute. | Economic / Resource | High | Simulated on a 20-question sample in `runners/model_binding.py` |
-| **Model Substitution** | Node commits to running heavy Mistral-7B, but serves lightweight Llama-3.2-3B to consumers, pocketing an assumed ~65% compute saving (placeholder, not measured). | Resource / Integrity | Medium | Described; not yet measured |
-| **Reproducibility != Safety** | Toxic or exploit outputs generated deterministically reproduce their score across nodes, so consensus accepts them into blocks. | Safety Invariant | Critical | Illustrated with fixed outputs in `runners/reproducibility.py` |
-| **Tuple Validation Bug** | Schema validator returns `(False, "reason")` tuple, which in Python evaluates as truthy, accepting invalid records into blocks. | Ledger Integrity | Critical | Confirmed in HadAgent history (`1a8d490` to `a4ec9da`); reproduced in `runners/validation_fuzzing.py` |
+## Hypotheses represented only by simulations
 
----
+The older top-level runners use fixed or constructed values. They illustrate questions for future measurement:
 
-## 6. Tested Mitigations
+- output/score divergence across execution configurations;
+- trust-then-betray behavior under a simulated optimistic-serving policy;
+- lookup and model-substitution scenarios;
+- deterministic unsafe-output handling; and
+- candidate tolerance, safety-judge, audit, and rotating-challenge defenses.
 
-1. **Tolerance-Based Anomaly Detection:** Replacing exact integer score equality with a calibrated tolerance ($\pm 15$ points under simulated jitter) removes the false anomalies; the real tolerance must come from measured divergence.
-2. **In-Path Safety Judge Oracle (`SafetyJudgeDefense`):** Integrates an automated correctness-and-safety evaluator directly into the verification path; on the fixed illustrative set it drops harmful block acceptance from 100% to 0%.
-3. **Probabilistic Pre-Delivery Gating (`RandomAuditDefense`):** Spot-checks trusted-node outputs before delivery with probability $p$, bounding adversarial delivery to expected $1/p$ rounds.
-4. **Dynamic Challenge Auditing (`RealRequestAuditDefense`):** Injects private rotating challenge queries into evaluation streams, preventing lookup-table oracles from passing audits.
+The simulated percentages, thresholds, compute savings, and safety outcomes are fixture properties. They are not rates measured on HadAgent, real model populations, or deployed systems. Candidate defenses have not received a full protocol or tradeoff evaluation.
+
+## Excluded claims
+
+The current evidence does not establish multi-master safety or liveness, P2P block propagation, fork choice, finality, rewards, Sybil resistance, hidden-challenge soundness, cross-hardware determinism, current upstream behavior, or consumer-agent safety. It also does not show that the full HadAgent design is broken.
+
+The implementation-level findings remain useful because the acceptance predicate is where useful-work claims become ledger decisions. See [Scope and claims](SCOPE_AND_CLAIMS.md) for exact source functions and [Application guide](APPLICATION_GUIDE.md) for evidence labels and reproduction paths.

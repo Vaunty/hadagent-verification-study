@@ -1,0 +1,59 @@
+﻿{
+  "experiment": "honest-signed-block-baseline",
+  "base_commit": "069f6cce89e75bad32b8e969f7e3fe85dae6194e",
+  "asset_plan": {
+    "path": "experiments/local_redteam/plan.json",
+    "sha256": "d04117d11018fad2399d92c718d0ca6503b5aae2a5dd24827d93aeac2b6ebec2",
+    "historical_measured_sha256": "dc4f7aed655a81249cee00dc36df441a04dd95ff3369f2f502fff33ceef169ce",
+    "public_copy_note": "The current asset plan normalizes private workstation paths to repository-relative paths. The historical hash identifies the byte-exact plan used for the measured October 11 run."
+  },
+  "asset_identity": {
+    "model_name": "Qwen2.5-1.5B-Instruct-GGUF",
+    "model_revision": "91cad51170dc346986eccefdc2dd33a9da36ead9",
+    "model_sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+    "evalset_sha256": "337118581a78bc8b083030e5c5642480f3d4401d69dc486728dddc83f3049a51",
+    "runtime_version": "b11514",
+    "runtime_binary_sha256": "b8c86a12a3b775bed73b0841cc4bdbb7a5640b75012a117484e2e677095d3610",
+    "version_output_sha256": "d52c8907248fed74090555b3266b32b0db0981c84f2151040146b3289d88f05d"
+  },
+  "decode": {
+    "temperature": 0.0,
+    "top_k": 1,
+    "top_p": 1.0,
+    "n_predict": 64,
+    "stop": null
+  },
+  "runtime": {
+    "threads": 4,
+    "threads_batch": 4,
+    "batch": 512,
+    "ubatch": 128,
+    "gpu_layers": 0,
+    "context": 4096,
+    "parallel": 1,
+    "seed": 42,
+    "restart_between_phases": true
+  },
+  "protocol": {
+    "claim_phase": "unchanged pdl.score_exact_match and DecodeConfig",
+    "validation_phase": "unchanged Block.validate on the frozen signed bytes",
+    "score_scale": 10000,
+    "required_min_score_scaled": 8000,
+    "requests_per_phase": 100,
+    "retry_count": 0
+  },
+  "limits": {
+    "startup_s": 120,
+    "proxy_startup_s": 30,
+    "upstream_request_s": 115,
+    "target_request_s": 120,
+    "phase_s": 1800,
+    "global_s": 3900,
+    "shutdown_s": 15,
+    "cleanup_reserve_s": 100,
+    "max_requests_per_phase": 100,
+    "max_total_requests": 200,
+    "min_available_ram_bytes": 3221225472,
+    "min_output_free_bytes": 209715200
+  }
+}

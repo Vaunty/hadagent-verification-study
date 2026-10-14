@@ -231,8 +231,8 @@ OpenCode used the existing environment with these commands:
 
 ```powershell
 $env:PYTHONPATH='hadagent/src'
-& 'C:\Users\matth\OneDrive\Desktop\RedTeamHarness\.venv\Scripts\python.exe' -m pytest tests/test_podl_score_scale.py tests/test_podl_endpoint_trust.py tests/test_podl_fixed_scale.py -v
-& 'C:\Users\matth\OneDrive\Desktop\RedTeamHarness\.venv\Scripts\python.exe' -m pytest -q -rs
+& '.venv\Scripts\python.exe' -m pytest tests/test_podl_score_scale.py tests/test_podl_endpoint_trust.py tests/test_podl_fixed_scale.py -v
+& '.venv\Scripts\python.exe' -m pytest -q -rs
 ```
 
 The named output is local and ignored by Git. These are unit-level observations

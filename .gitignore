@@ -71,3 +71,7 @@ legacy/
 # Local P010 measurements and benchmark material (never publish implicitly)
 /experiments/local_redteam/local/
 /hadagent/data/evalset/evalset.jsonl
+
+# Local P012 and P013 evidence
+/experiments/score_scale_grid/local/
+/experiments/honest_baseline/local/

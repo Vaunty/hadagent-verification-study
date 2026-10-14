@@ -1,1 +1,5 @@
+-r requirements.txt
+
+pytest>=8.0
+pytest-asyncio>=1.0
 hypothesis==6.168.0
