@@ -1,5 +1,7 @@
 ﻿# Honest signed-block baseline preregistration
 
+> **Archive note:** This is the preserved pre-execution protocol. The completed two-phase run and artifact audit are recorded in [Honest baseline results](HONEST_BASELINE_RESULTS.md).
+
 Status: implementation prepared for native source review. No model inference has run. The model phase may start only after Root reviews the frozen commit. Matthew's continuing instruction authorizes this bounded cached local study; the checks remain supplemental AI work rather than designated reviewer votes or human validation.
 
 ## Question

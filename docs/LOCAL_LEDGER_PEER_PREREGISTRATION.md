@@ -1,5 +1,7 @@
 # Local ledger and peer-boundary preregistration
 
+> **Archive note:** This is the preserved pre-execution protocol. The completed primary run and clean-worktree reproduction are recorded in [Local ledger and peer-boundary results](LOCAL_LEDGER_PEER_RESULTS.md).
+
 Status: frozen before first execution. Matthew explicitly requested this follow-up on October 11, 2026. A native Codex AI agent designed and implemented it under that direction. Native reviews and reproductions are supplementary AI checks, not designated OpenCode/reviewer votes or human validation.
 
 ## Question and implemented boundaries

@@ -1,5 +1,7 @@
 # P010 local HTTP extension preregistration
 
+> **Archive note:** This is the preserved pre-execution protocol. The completed primary run and clean-worktree reproduction are recorded in [Local HTTP extension results](LOCAL_HTTP_EXTENSION_RESULTS.md).
+
 Status: frozen before first execution. This protocol is a session-specific local extension requested by Matthew on 2026-10-11. The design and implementation are AI-assisted; no designated OpenCode or reviewer vote is claimed.
 
 ## Question and boundary

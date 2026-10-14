@@ -1,5 +1,7 @@
 # P010: controlled local adversarial endpoint evaluation
 
+> **Archive note:** This is the preserved pre-execution protocol. The completed outcome is in [P010 local red-team results](P010_LOCAL_REDTEAM_RESULTS.md).
+
 Prepared October 11, 2026 **before execution**. AI-designed/implemented under Matthew Ngoy's explicit instruction to advance this project into actual red-teaming. This is new October 11 AI-assisted work, not retrospective personal implementation credit. Source and this design must be committed before the first run. Actual result files are single-use and retain failures.
 
 ## Question and hypothesis

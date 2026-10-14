@@ -1,5 +1,7 @@
 # P-009 offline block-path preregistration
 
+> **Archive note:** This is the preserved pre-execution protocol. The completed outcome is in [P-009 block-path results](P009_BLOCK_PATH_RESULTS.md).
+
 ## Status
 
 **Draft implementation only; no P-009 test has been executed.** This file freezes the inputs, source snapshot, decision oracles, boundaries, and review questions before any measurement. The branch is `astra/block-path-20261011`, based on P-006 commit `279eeb0e2d50237a02d70298117db12c07ab23cb`.

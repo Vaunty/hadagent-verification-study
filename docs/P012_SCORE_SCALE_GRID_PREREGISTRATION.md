@@ -1,5 +1,7 @@
 # P012 finite score-scale grid preregistration
 
+> **Archive note:** This is the preserved pre-execution protocol. The primary run and clean-checkout AI reproduction are recorded in [P012 score-scale grid results](P012_SCORE_SCALE_GRID_RESULTS.md).
+
 **Status:** implementation and design prepared for root review; no experiment has run. Do not execute before the frozen commit is reviewed. Matthew authorized this bounded local quantification on October 11, 2026. A Codex AI agent designed and implemented it under his direction.
 
 ## Question and boundary
