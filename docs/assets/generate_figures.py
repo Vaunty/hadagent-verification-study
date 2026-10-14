@@ -1,4 +1,4 @@
-"""Rebuild the explanatory figures from the accompanying audited aggregate data.
+"""Rebuild the evidence figures and proposed-study diagram.
 
 Requires matplotlib. Does not call a model, endpoint, or external service.
 SVG keeps editable text; PNG is the GitHub README fallback.
@@ -143,6 +143,47 @@ def framework():
     footer(a,'Design: HadAgent arXiv:2604.18614v1, §§III-A–G. Implementation: the locally supplied podl_chain snapshot; exact upstream revision unverified.\nContribution: a bounded verifier audit and reproducible local evidence. No claim of breaking the complete consensus protocol.')
     save(f,'framework-scope')
 
+def next_study():
+    f,a=canvas('Compare score-only verification with a verifier-controlled reference',
+        'Proposed next study · paired decisions on sealed held-out prompts · protocol only; no experiment has been run.',
+        'Next study / proposed and unrun')
+
+    stages=[
+        (.6,4.25,'01  Calibrate, then freeze',
+         'Find an eligible honest target. Fix the\nagreement rule, threshold, and stop rules.',BLUE),
+        (5.8,4.25,'02  Commit the contract',
+         'Artifact, task, decode, runtime, endpoint,\nand context hashes enter the signed ledger.',TEAL),
+        (11.0,4.4,'03  Reveal held-out prompts',
+         'Keep final challenges sealed until the\nendpoint, candidates, and thresholds are fixed.',BLUE),
+    ]
+    for x,w,title,body,color in stages:
+        box(a,x,5.25,w,1.3,title,body,color,headsize=14,bodysize=10.5)
+    arrow(a,(4.88,5.9),(5.72,5.9),BLUE)
+    arrow(a,(10.08,5.9),(10.92,5.9),BLUE)
+
+    box(a,.6,3.25,7.2,1.45,'Copied baseline · candidate endpoint',
+        'The verifier queries the endpoint named in the PROOF,\nrecomputes task score, then applies  B = score ≥ threshold.',AMBER,
+        headsize=15,bodysize=11)
+    box(a,8.2,3.25,7.2,1.45,'Proposed audit · verifier-controlled target',
+        'Send the same challenge to candidate and committed reference;\napply  R = B  AND  output agreement ≥ frozen threshold.',TEAL,
+        headsize=15,bodysize=11)
+    arrow(a,(13.2,5.2),(13.2,4.75),BLUE)
+    arrow(a,(13.2,4.75),(4.2,4.75),AMBER,style='--',rad=.08)
+    arrow(a,(13.2,4.75),(11.8,4.75),TEAL,style='--',rad=-.08)
+
+    controls=[
+        (.6,'Eligible honest target','Exact committed artifact;\nmust qualify and stay accepted.',TEAL),
+        (4.4,'Alternate model','Preselected on calibration; useful\nonly if it passes the score gate.',BLUE),
+        (8.2,'Cache / lookup','Calibration examples only; final\nchallenges remain sealed.',AMBER),
+        (12.0,'Target proxy','Expected to pass; exposes the\nfresh-work limitation.',AMBER),
+    ]
+    a.text(.6,2.88,'PAIRED CANDIDATE ARMS AND CONTROLS',fontsize=11,color=MUTED,weight='bold')
+    for x,title,body,color in controls:
+        box(a,x,1.35,3.4,1.25,title,body,color,headsize=13,bodysize=9.8)
+
+    footer(a,'Commitments make the declared contract tamper-evident; they do not prove that the candidate ran it. A passing proxy shows output consistency, not fresh prover work.\nPROPOSED / UNRUN: no model, paid compute, consensus network, or deployed system tested; not reviewed or approved by Dr. Boyang Li.')
+    save(f,'next-study-protocol')
+
 if __name__=='__main__':
-    boundary();score_repair();baseline();framework()
-    print('Created four evidence figures, each as editable SVG and PNG.')
+    boundary();score_repair();baseline();framework();next_study()
+    print('Created four evidence figures and one proposed-study diagram, each as editable SVG and PNG.')

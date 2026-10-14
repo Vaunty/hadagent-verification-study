@@ -32,6 +32,8 @@ The vendored snapshot under `hadagent/src/podl_chain/` validates record schemas 
 
 ![The local verifier cannot distinguish named-model execution from a correct known-answer lookup](docs/assets/verification-boundary.svg)
 
+The [proposed next study](docs/NEXT_STUDY.md) would compare this copied score-only path with a verifier-controlled reference on sealed held-out challenges, using eligible-honest, alternate-model, cache, and proxy controls. It is an unrun protocol design, does not claim proof of fresh work, and has not been reviewed or approved by Dr. Boyang Li.
+
 The `core/poi/` package is a separate project simulation used by older runners. Its trust manager, two-tier serving path, anomaly detector, and defenses are not copied HadAgent components. Results from those runners must not be presented as measurements of the HadAgent implementation.
 
 The pre-HadAgent LLM/VLM harness is preserved separately in [Vaunty/legacy-red-team-harness](https://github.com/Vaunty/legacy-red-team-harness).
@@ -88,7 +90,7 @@ The experiment commands and evidence requirements differ by study. Read [Applica
 
 Each result document states which labels apply. Test pass counts are engineering evidence and are not experimental sample sizes.
 
-The [figure notes and source data](docs/assets/README.md) explain how the four diagrams were derived from saved aggregates.
+The [figure notes and source data](docs/assets/README.md) explain the four landing-page evidence figures and the separate proposed-study diagram.
 
 ## Attribution, license, and responsible use
 
