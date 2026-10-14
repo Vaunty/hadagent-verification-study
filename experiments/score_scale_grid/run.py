@@ -34,6 +34,17 @@ from podl_chain.records import Lane, ModelType, ProofType, Record, pack
 
 
 BASE_COMMIT = "069f6cce89e75bad32b8e969f7e3fe85dae6194e"
+# The public-release branch imports the final P012 files without making the
+# private experiment branch part of public history. These Git object IDs bind
+# the copied target, repair, plan, fixture, and participant to the frozen P012
+# implementation at 9de5ac566676670fb57165803d0d2387bd73e1af.
+PUBLIC_RELEASE_OBJECTS = {
+    "hadagent/src/podl_chain": "ab97205c89dc4de06f6583626d44f78c0242d688",
+    "core/podl_verifier.py": "ae0fd1e5a9e15bc9f53518e9303553ec31eaf219",
+    "experiments/score_scale_grid/participant.py": "b201a61c152423d8c91d6f4576b7d24bf877573d",
+    "experiments/score_scale_grid/plan.json": "19694758540e8f06771156885ef05e63098fac0f",
+    "experiments/score_scale_grid/fixtures/evalset.jsonl": "d0f92636796294899794a4681efef5a879848ec1",
+}
 EXPERIMENT_DIR = Path(__file__).resolve().parent
 PLAN_PATH = EXPERIMENT_DIR / "plan.json"
 FIXTURE_PATH = EXPERIMENT_DIR / "fixtures/evalset.jsonl"
@@ -80,6 +91,14 @@ def git(*args: str, check: bool = True) -> str:
         text=True,
     )
     return result.stdout.strip()
+
+
+def matches_public_release_snapshot() -> bool:
+    """Accept the audited portable import when its frozen objects are exact."""
+    return all(
+        git("rev-parse", f"HEAD:{path}", check=False) == expected
+        for path, expected in PUBLIC_RELEASE_OBJECTS.items()
+    )
 
 
 def child_env() -> dict[str, str]:
@@ -549,11 +568,15 @@ def main() -> int:
         if git("status", "--porcelain", "--untracked-files=all"):
             raise RuntimeError("tracked or unignored source must be clean before first execution")
         head = git("rev-parse", "HEAD")
-        if subprocess.run(
+        base_is_ancestor = subprocess.run(
             ["git", "-C", str(ROOT), "merge-base", "--is-ancestor", BASE_COMMIT, head],
             check=False,
-        ).returncode != 0:
-            raise RuntimeError("frozen implementation does not descend from the required E5 base")
+        ).returncode == 0
+        release_snapshot_matches = matches_public_release_snapshot()
+        if not base_is_ancestor and not release_snapshot_matches:
+            raise RuntimeError(
+                "implementation neither descends from the required E5 base nor matches the audited public snapshot"
+            )
         plan = json.loads(PLAN_PATH.read_text(encoding="utf-8"))
         validate_plan(plan)
         cases = enumerate_cases()
@@ -567,6 +590,9 @@ def main() -> int:
         report.update(
             {
                 "commit": head,
+                "source_provenance": (
+                    "required-base ancestry" if base_is_ancestor else "audited public-release object set"
+                ),
                 "fixture_sha256": hashlib.sha256(eval_bytes).hexdigest(),
                 "plan_sha256": digest(PLAN_PATH),
             }

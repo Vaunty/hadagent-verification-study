@@ -36,3 +36,7 @@ These are exhaustive counts for the declared five-item synthetic grid. They are 
 - Integrity: `post_integrity=ok`; the installed eval fixture was removed; the worktree remained clean; 110 candidate result files, 110 request traces and 110 participant exit records were preserved.
 
 Each run records zero oracle mismatches, zero request-audit mismatches and 1,100 completed requests. The cross-run audit compared semantic decisions and counts because dynamic loopback ports change candidate bytes and hashes across worktrees.
+
+## Public-release portability
+
+The public branch imports the final P012 files without publishing the separate experiment branch's internal history. Its runner therefore accepts either the original required-base ancestry or an exact audited Git object set for the copied target, isolated repair, plan, fixture, and participant. This changes only the preflight provenance check. The finite cases, decision paths, oracles, and cleanup guards remain the frozen P012 implementation. A public rerun creates new local evidence and does not replace the primary report hashes above.

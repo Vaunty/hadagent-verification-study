@@ -43,6 +43,8 @@ python -m experiments.score_scale_grid.run `
 
 The output directory is ignored. The participant serves constructed labels over loopback HTTP; no model executes. A successful run should be compared with the preregistered per-cell oracles, not summarized as an attack rate against deployed systems.
 
+The public branch is not descended from the private P012 experiment branch. The runner instead verifies an audited Git object set for the frozen target, repair, plan, fixture, and participant before it accepts this portable layout.
+
 ## Inspect the P010 implementation boundary
 
 `experiments/local_redteam/` contains three related runners:

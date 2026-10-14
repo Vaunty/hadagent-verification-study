@@ -20,6 +20,8 @@ Entries are reverse-chronological. Categories: [SETUP], [FEATURE], [CHANGE], [FI
   preregistrations, tests, and result records from their frozen local branches.
 - Normalized tracked workstation paths to repository-relative locations while
   retaining the historical plan digest in the P013 metadata.
+- Added a P012 public-layout provenance gate that verifies the frozen target,
+  repair, plan, fixture, and participant by their Git object identities.
 
 ### [CHANGE] Clarify provenance and release constraints
 - Added `NOTICE.md` to record the absence of a repository-wide license, the
